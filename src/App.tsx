@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { HomeScreen } from "./components/HomeScreen";
 import { DashboardPage } from "./components/DashboardPage";
-import { ImportExportPage } from "./components/ImportExportPage";
 import { ImportScreen } from "./components/ImportScreen";
 import { ModuleReviewPage } from "./components/ModuleReviewPage";
 import { PreviewScreen } from "./components/PreviewScreen";
@@ -34,7 +33,6 @@ const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
   { route: "mistakePractice", label: "Mistake Practice" },
   { route: "reviewList", label: "Review List" },
   { route: "statistics", label: "Statistics" },
-  { route: "importExport", label: "Import / Export" },
   { route: "settings", label: "Settings" }
 ];
 
@@ -143,7 +141,6 @@ export default function App() {
             {route === "reviewListPractice" ? <PracticeSetupPage mode="review_list_practice" /> : null}
             {route === "reviewList" ? <ReviewListPage /> : null}
             {route === "statistics" ? <StatisticsPage /> : null}
-            {route === "importExport" ? <ImportExportPage /> : null}
             {route === "settings" ? <SettingsScreen /> : null}
           </div>
         </main>
@@ -173,7 +170,6 @@ function titleForRoute(route: RouteKey): string {
     reviewList: "Review List",
     reviewListPractice: "Review List Practice",
     statistics: "Statistics",
-    importExport: "Import / Export",
     practiceRunner: "Focused Practice",
     settings: "Settings"
   };

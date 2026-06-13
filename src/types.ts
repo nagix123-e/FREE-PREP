@@ -332,7 +332,6 @@ export type RouteKey =
   | "reviewList"
   | "reviewListPractice"
   | "statistics"
-  | "importExport"
   | "practiceRunner"
   | "testOverview"
   | "rulesAndTools"
