@@ -1,18 +1,27 @@
 import { createSqliteIntegerId, getDatabase, listQuestions } from "../lib/database";
-import { getModuleDurationSec, getModuleQuestions, TEST_MODULES } from "../lib/testPlan";
+import {
+  getAttemptModeForCourse,
+  getModuleDurationSec,
+  getModuleIndexesForCourse,
+  getModuleQuestions,
+  TEST_MODULES
+} from "../lib/testPlan";
 import { gradeAttempt } from "./scoringService";
-import type { Attempt, Question, ResponseRecord } from "../types";
+import type { Attempt, PracticeTestCourse, Question, ResponseRecord } from "../types";
 
-export async function createFullHardAttempt(questionSetId: number): Promise<{
+export async function createFullHardAttempt(questionSetId: number, course: PracticeTestCourse = "all"): Promise<{
   attempt: Attempt;
   questions: Question[];
   responses: ResponseRecord[];
 }> {
   const questions = await listQuestions(questionSetId);
-  validateFullHardQuestionSet(questions);
+  const moduleIndexes = getModuleIndexesForCourse(course);
+  validateFullHardQuestionSet(questions, moduleIndexes);
 
   const db = await getDatabase();
-  const firstModule = TEST_MODULES[0];
+  const firstModuleIndex = moduleIndexes[0] ?? 0;
+  const firstModule = TEST_MODULES[firstModuleIndex];
+  const mode = getAttemptModeForCourse(course);
   const startedAt = new Date().toISOString();
   const attemptId = createSqliteIntegerId();
 
@@ -24,27 +33,27 @@ export async function createFullHardAttempt(questionSetId: number): Promise<{
     [
       attemptId,
       questionSetId,
-      "full_hard_practice",
+      mode,
       "in_progress",
       startedAt,
       firstModule.section,
       firstModule.module,
       0,
-      getModuleDurationSec(0)
+      getModuleDurationSec(firstModuleIndex)
     ]
   );
 
   const attempt: Attempt = {
     id: attemptId,
     questionSetId,
-    mode: "full_hard_practice",
+    mode,
     status: "in_progress",
     startedAt,
     completedAt: null,
     currentSection: firstModule.section,
     currentModule: firstModule.module,
     currentQuestionIndex: 0,
-    remainingTimeSec: getModuleDurationSec(0),
+    remainingTimeSec: getModuleDurationSec(firstModuleIndex),
     practiceScore: null,
     rwScore: null,
     mathScore: null
@@ -138,8 +147,9 @@ async function listResponses(attemptId: number): Promise<ResponseRecord[]> {
   return rows.map(toResponseRecord);
 }
 
-function validateFullHardQuestionSet(questions: Question[]): void {
-  const problems = TEST_MODULES.flatMap((spec, index) => {
+function validateFullHardQuestionSet(questions: Question[], moduleIndexes: number[]): void {
+  const problems = moduleIndexes.flatMap((index) => {
+    const spec = TEST_MODULES[index];
     const actual = getModuleQuestions(questions, index).length;
     return actual === spec.questionCount
       ? []

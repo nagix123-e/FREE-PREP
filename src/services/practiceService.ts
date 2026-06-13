@@ -1,26 +1,14 @@
 import { createSqliteIntegerId, getDatabase, listQuestions } from "../lib/database";
-import type { AttemptMode, Question } from "../types";
+import type { Question } from "../types";
+
+export type PracticeMode = "mistake_practice" | "review_list_practice";
 
 export interface PracticeConfig {
   questionSetId: number;
-  mode: AttemptMode;
-  filterValue: string;
+  mode: PracticeMode;
   questionCount: number;
   randomize: boolean;
   timerEnabled: boolean;
-}
-
-export async function getAvailableFilters(questionSetId: number): Promise<{
-  domains: string[];
-  skills: string[];
-  topics: string[];
-}> {
-  const questions = await listQuestions(questionSetId);
-  return {
-    domains: unique(questions.map((question) => question.contentDomain)),
-    skills: unique(questions.map((question) => question.skillGroup)),
-    topics: unique(questions.map((question) => question.questionTopic || "Unspecified"))
-  };
 }
 
 export async function buildPracticeQuestions(config: PracticeConfig): Promise<Question[]> {
@@ -30,21 +18,7 @@ export async function buildPracticeQuestions(config: PracticeConfig): Promise<Qu
   if (config.mode === "review_list_practice") {
     return getReviewListQuestions(config);
   }
-
-  const questions = await listQuestions(config.questionSetId);
-  const filtered = questions.filter((question) => {
-    if (config.mode === "domain_practice") {
-      return question.contentDomain === config.filterValue;
-    }
-    if (config.mode === "skill_practice") {
-      return question.skillGroup === config.filterValue;
-    }
-    if (config.mode === "topic_practice") {
-      return (question.questionTopic || "Unspecified") === config.filterValue;
-    }
-    return true;
-  });
-  return limitQuestions(filtered, config.questionCount, config.randomize);
+  return [];
 }
 
 export async function createPracticeAttempt(config: PracticeConfig): Promise<number> {
@@ -104,8 +78,4 @@ function limitQuestions(questions: Question[], count: number, randomize: boolean
 
 function shuffle<T>(items: T[]): T[] {
   return [...items].sort(() => Math.random() - 0.5);
-}
-
-function unique(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }

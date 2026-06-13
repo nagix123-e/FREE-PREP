@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    name: Release ${{ matrix.platform }}
+    name: Build and release ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +53,12 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "SAT Practice Simulator ${{ github.ref_name }}"
-          releaseBody: "Practice-only desktop release. This project is not affiliated with College Board."
+          releaseBody: |
+            Desktop installers for SAT Practice Simulator.
+
+            Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
+
+            This project is not affiliated with College Board.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

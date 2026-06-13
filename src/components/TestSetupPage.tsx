@@ -3,7 +3,7 @@ import { getQuestionSet } from "../lib/database";
 import { TEST_MODULES } from "../lib/testPlan";
 import { useAppStore } from "../store/appStore";
 import { useTestSessionStore } from "../store/testSessionStore";
-import type { QuestionSet } from "../types";
+import type { PracticeTestCourse, QuestionSet } from "../types";
 
 export function TestSetupPage() {
   const { selectedSetId, navigate, setDbError } = useAppStore();
@@ -21,12 +21,12 @@ export function TestSetupPage() {
       );
   }, [selectedSetId, setDbError]);
 
-  async function handleStart() {
+  async function handleStart(course: PracticeTestCourse) {
     if (!selectedSetId) {
       return;
     }
     try {
-      const attempt = await startAttempt(selectedSetId);
+      const attempt = await startAttempt(selectedSetId, course);
       setDbError(null);
       navigate("test", selectedSetId, attempt.id);
     } catch (startError: unknown) {
@@ -69,14 +69,23 @@ export function TestSetupPage() {
           </div>
         ) : null}
 
-        <button
-          className="mt-6 rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-          disabled={loading}
-          onClick={() => void handleStart()}
-          type="button"
-        >
-          {loading ? "Starting..." : "Start Full Hard Practice Test"}
-        </button>
+        <div className="mt-6 flex flex-col gap-3 sm:w-80">
+          <PracticeStartButton
+            disabled={loading}
+            label={loading ? "Starting..." : "Start Full Hard Practice Test"}
+            onClick={() => void handleStart("all")}
+          />
+          <PracticeStartButton
+            disabled={loading}
+            label="Start RW Only Full Hard Practice Test"
+            onClick={() => void handleStart("rw")}
+          />
+          <PracticeStartButton
+            disabled={loading}
+            label="Start Math Only Full Hard Practice Test"
+            onClick={() => void handleStart("math")}
+          />
+        </div>
       </section>
 
       <aside className="rounded-md border border-line bg-white p-6 shadow-panel">
@@ -95,6 +104,27 @@ export function TestSetupPage() {
         </div>
       </aside>
     </div>
+  );
+}
+
+function PracticeStartButton({
+  disabled,
+  label,
+  onClick
+}: {
+  disabled: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="h-11 w-full rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+    </button>
   );
 }
 

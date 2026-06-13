@@ -1,4 +1,4 @@
-import type { Question, TestModuleSpec } from "../types";
+import type { AttemptMode, PracticeTestCourse, Question, TestModuleSpec } from "../types";
 
 export const TEST_MODULES: TestModuleSpec[] = [
   {
@@ -55,4 +55,34 @@ export function getModuleQuestions(questions: Question[], moduleIndex: number): 
 
 export function getModuleDurationSec(moduleIndex: number): number {
   return (TEST_MODULES[moduleIndex]?.minutes ?? 0) * 60;
+}
+
+export function getModuleIndexesForCourse(course: PracticeTestCourse): number[] {
+  if (course === "rw") {
+    return [0, 1];
+  }
+  if (course === "math") {
+    return [2, 3];
+  }
+  return TEST_MODULES.map((_, index) => index);
+}
+
+export function getModuleIndexesForAttemptMode(mode: AttemptMode): number[] {
+  if (mode === "full_hard_rw_practice") {
+    return getModuleIndexesForCourse("rw");
+  }
+  if (mode === "full_hard_math_practice") {
+    return getModuleIndexesForCourse("math");
+  }
+  return getModuleIndexesForCourse("all");
+}
+
+export function getAttemptModeForCourse(course: PracticeTestCourse): AttemptMode {
+  if (course === "rw") {
+    return "full_hard_rw_practice";
+  }
+  if (course === "math") {
+    return "full_hard_math_practice";
+  }
+  return "full_hard_practice";
 }

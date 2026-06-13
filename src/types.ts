@@ -21,9 +21,8 @@ export type SetStatus = "valid" | "warning";
 export type AttemptStatus = "in_progress" | "module_review" | "section_break" | "completed" | "paused";
 export type AttemptMode =
   | "full_hard_practice"
-  | "domain_practice"
-  | "skill_practice"
-  | "topic_practice"
+  | "full_hard_rw_practice"
+  | "full_hard_math_practice"
   | "mistake_practice"
   | "review_list_practice";
 
@@ -298,6 +297,8 @@ export interface TestModuleSpec {
   questionCount: number;
 }
 
+export type PracticeTestCourse = "all" | "rw" | "math";
+
 export interface ValidationIssue {
   level: "error" | "warning";
   row?: number;
@@ -327,9 +328,6 @@ export type RouteKey =
   | "reviewAnswers"
   | "history"
   | "dashboard"
-  | "domainPractice"
-  | "skillPractice"
-  | "topicPractice"
   | "mistakePractice"
   | "reviewList"
   | "reviewListPractice"

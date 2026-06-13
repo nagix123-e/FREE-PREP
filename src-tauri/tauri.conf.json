@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi", "nsis", "app", "dmg", "deb", "appimage"],
     "icon": ["icons/icon.png"],
     "shortDescription": "A local SAT practice simulator for importing CSV-based practice tests.",
     "longDescription": "SAT Practice Simulator is an unofficial local desktop app for importing CSV-based practice tests, taking practice exams, reviewing answers, and tracking estimated practice scores."

@@ -1,6 +1,7 @@
 import { getDatabase, listQuestions } from "../lib/database";
-import { TEST_MODULES } from "../lib/testPlan";
+import { getModuleIndexesForAttemptMode, TEST_MODULES } from "../lib/testPlan";
 import type {
+  AttemptMode,
   BreakdownRow,
   GradedQuestion,
   Question,
@@ -116,16 +117,18 @@ export function classifyStrength(
 
 export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
   const db = await getDatabase();
-  const attemptRows = await db.select<Array<{ question_set_id: number }>>(
-    "SELECT question_set_id FROM attempts WHERE id = $1",
+  const attemptRows = await db.select<Array<{ mode: AttemptMode; question_set_id: number }>>(
+    "SELECT mode, question_set_id FROM attempts WHERE id = $1",
     [attemptId]
   );
-  const questionSetId = attemptRows[0]?.question_set_id;
+  const attempt = attemptRows[0];
+  const questionSetId = attempt?.question_set_id;
   if (!questionSetId) {
     throw new Error("Attempt not found for grading.");
   }
 
-  const questions = await listQuestions(questionSetId);
+  const moduleIndexes = getModuleIndexesForAttemptMode(attempt.mode);
+  const questions = filterQuestionsForModules(await listQuestions(questionSetId), moduleIndexes);
   const responses = await loadResponses(attemptId);
   const responsesByQuestionId = new Map(responses.map((response) => [response.questionId, response]));
   const gradedQuestions = questions.map((question) =>
@@ -145,7 +148,7 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
   const rwScore = await calculateSectionScore({ questionSetId, section: "RW", ...rwRaw });
   const mathScore = await calculateSectionScore({ questionSetId, section: "MATH", ...mathRaw });
   const totalScore = calculateTotalScore(rwScore, mathScore);
-  const result = buildScoreResult(attemptId, gradedQuestions, rwScore, mathScore, totalScore);
+  const result = buildScoreResult(attemptId, gradedQuestions, rwScore, mathScore, totalScore, moduleIndexes);
 
   await db.execute(
     `UPDATE attempts
@@ -189,7 +192,8 @@ function buildScoreResult(
   gradedQuestions: GradedQuestion[],
   rwScore: number,
   mathScore: number,
-  totalScore: number
+  totalScore: number,
+  moduleIndexes: number[]
 ): ScoreResult {
   const correct = gradedQuestions.filter((item) => item.isCorrect).length;
   const unanswered = gradedQuestions.filter((item) => !item.isAnswered).length;
@@ -212,7 +216,7 @@ function buildScoreResult(
     accuracy: gradedQuestions.length > 0 ? Math.round((correct / gradedQuestions.length) * 100) : 0,
     timeSpentSec,
     gradedQuestions,
-    moduleBreakdown: buildModuleBreakdown(gradedQuestions),
+    moduleBreakdown: buildModuleBreakdown(gradedQuestions, moduleIndexes),
     domainBreakdown: buildBreakdown(gradedQuestions, (item) => item.question.contentDomain),
     skillBreakdown: buildBreakdown(gradedQuestions, (item) => item.question.skillGroup),
     topicBreakdown: buildBreakdown(gradedQuestions, (item) => item.question.questionTopic || "Unspecified"),
@@ -222,8 +226,9 @@ function buildScoreResult(
   };
 }
 
-function buildModuleBreakdown(gradedQuestions: GradedQuestion[]): BreakdownRow[] {
-  return TEST_MODULES.map((spec) => {
+function buildModuleBreakdown(gradedQuestions: GradedQuestion[], moduleIndexes: number[]): BreakdownRow[] {
+  return moduleIndexes.map((index) => {
+    const spec = TEST_MODULES[index];
     const items = gradedQuestions.filter(
       (item) =>
         item.question.section === spec.section &&
@@ -232,6 +237,19 @@ function buildModuleBreakdown(gradedQuestions: GradedQuestion[]): BreakdownRow[]
     );
     return summarizeBreakdown(spec.title, items);
   });
+}
+
+function filterQuestionsForModules(questions: Question[], moduleIndexes: number[]): Question[] {
+  const allowedKeys = new Set(moduleIndexes.map((index) => TEST_MODULES[index]?.key).filter(Boolean));
+  return questions.filter((question) =>
+    TEST_MODULES.some(
+      (spec) =>
+        allowedKeys.has(spec.key) &&
+        question.section === spec.section &&
+        question.module === spec.module &&
+        question.route === spec.route
+    )
+  );
 }
 
 function buildBreakdown(

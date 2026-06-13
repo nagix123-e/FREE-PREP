@@ -31,9 +31,6 @@ const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
   { route: "import", label: "Import CSV" },
   { route: "sets", label: "Question Sets" },
   { route: "history", label: "Score History" },
-  { route: "domainPractice", label: "Domain Practice" },
-  { route: "skillPractice", label: "Skill Practice" },
-  { route: "topicPractice", label: "Topic Practice" },
   { route: "mistakePractice", label: "Mistake Practice" },
   { route: "reviewList", label: "Review List" },
   { route: "statistics", label: "Statistics" },
@@ -142,9 +139,6 @@ export default function App() {
             {route === "result" ? <ResultPage /> : null}
             {route === "reviewAnswers" ? <ReviewAnswersPage /> : null}
             {route === "history" ? <ScoreHistoryPage /> : null}
-            {route === "domainPractice" ? <PracticeSetupPage mode="domain_practice" /> : null}
-            {route === "skillPractice" ? <PracticeSetupPage mode="skill_practice" /> : null}
-            {route === "topicPractice" ? <PracticeSetupPage mode="topic_practice" /> : null}
             {route === "mistakePractice" ? <PracticeSetupPage mode="mistake_practice" /> : null}
             {route === "reviewListPractice" ? <PracticeSetupPage mode="review_list_practice" /> : null}
             {route === "reviewList" ? <ReviewListPage /> : null}
@@ -175,9 +169,6 @@ function titleForRoute(route: RouteKey): string {
     result: "Result",
     reviewAnswers: "Review Answers",
     history: "Score History",
-    domainPractice: "Domain Practice",
-    skillPractice: "Skill Practice",
-    topicPractice: "Topic Practice",
     mistakePractice: "Mistake Practice",
     reviewList: "Review List",
     reviewListPractice: "Review List Practice",

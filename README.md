@@ -17,12 +17,15 @@ Scores shown in the app are Practice Score / Estimated Score values only. They a
   - RW Module 2 hard
   - Math Module 1 base
   - Math Module 2 hard
-- Supports focused practice by domain, skill, topic, mistakes, and review list.
+- Supports full fixed-route practice tests, RW-only tests, Math-only tests, mistake practice, and review-list practice.
 - Renders tables, coordinate planes, function graphs, and SAT-style diagrams from CSV visual data.
 
-## Download For General Users
+## For Users: Download The Desktop App
 
 General users do not need Rust, Cargo, Node.js, npm, pnpm, yarn, or the Tauri CLI.
+
+Download ZIP is for developers who want to inspect or build the source code.
+If you only want to use the app, download the installer from GitHub Releases.
 
 1. Open the project's GitHub Releases page.
 2. Download the installer for your operating system.
@@ -31,21 +34,42 @@ General users do not need Rust, Cargo, Node.js, npm, pnpm, yarn, or the Tauri CL
 
 ## Windows Install
 
-Download the `.msi` or `.exe` file from GitHub Releases, then run it.
+1. Open GitHub Releases.
+2. Download `SAT-Practice-Simulator_x.x.x_x64-setup.exe` if available, or the `.msi` installer.
+3. Run the installer.
+4. Launch SAT Practice Simulator from the Start Menu.
 
 Unsigned Windows apps may show a SmartScreen warning. This project does not require global developer tools or command-line setup for normal use.
 
 ## macOS Install
 
-Download the `.dmg` or `.app` bundle from GitHub Releases.
+1. Open GitHub Releases.
+2. Download the `.dmg` file.
+3. Open the `.dmg`.
+4. Drag SAT Practice Simulator into Applications.
+5. Launch it from Applications.
 
 If macOS warns that the app is from an unidentified developer, right-click the app and choose Open. Code signing and notarization are planned for a future release.
 
 ## Linux Install
 
-Download the `.deb` or `.AppImage` from GitHub Releases.
+1. Open GitHub Releases.
+2. Download the `.AppImage` or `.deb` file.
+3. For `.AppImage`, mark it executable and launch it.
+4. For `.deb`, install it with your package manager.
 
-For `.deb`, install with your package manager. For `.AppImage`, mark the file executable and launch it from your desktop environment.
+Example AppImage command:
+
+```bash
+chmod +x SAT-Practice-Simulator*.AppImage
+./SAT-Practice-Simulator*.AppImage
+```
+
+Example Debian/Ubuntu command:
+
+```bash
+sudo apt install ./SAT-Practice-Simulator*.deb
+```
 
 ## CSV Import
 
@@ -77,13 +101,14 @@ The app stores user data locally through the Tauri SQLite plugin. Packaged deskt
 
 Local SQLite databases and build outputs are excluded from Git.
 
-## Developer Setup
+## For Developers: Build From Source
 
 Developers need Node.js, npm, Rust, Cargo, and platform-specific Tauri prerequisites.
 
 ```bash
+git clone <repository-url>
+cd SAT
 npm install
-npm run dev
 npm run tauri:dev
 ```
 
@@ -94,6 +119,12 @@ npm run typecheck
 npm run lint
 npm run build
 npm run tauri:build
+```
+
+Local desktop bundles are generated under:
+
+```text
+src-tauri/target/release/bundle/
 ```
 
 ## GitHub Desktop Publish Steps

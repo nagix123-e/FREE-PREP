@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { getModuleDurationSec, getModuleQuestions, TEST_MODULES } from "../lib/testPlan";
+import { getModuleDurationSec, getModuleIndexesForAttemptMode, getModuleQuestions, TEST_MODULES } from "../lib/testPlan";
 import {
   completeAttempt,
   createFullHardAttempt,
@@ -8,7 +8,7 @@ import {
   saveResponse
 } from "../services/testSessionService";
 import { gradeStudentResponse } from "../services/scoringService";
-import type { Attempt, Question, ResponseRecord } from "../types";
+import type { Attempt, PracticeTestCourse, Question, ResponseRecord } from "../types";
 
 interface TestSessionState {
   attempt: Attempt | null;
@@ -20,7 +20,7 @@ interface TestSessionState {
   timerHidden: boolean;
   loading: boolean;
   error: string | null;
-  startAttempt: (questionSetId: number) => Promise<Attempt>;
+  startAttempt: (questionSetId: number, course?: PracticeTestCourse) => Promise<Attempt>;
   resumeAttempt: (attemptId: number) => Promise<void>;
   setTimerHidden: (hidden: boolean) => void;
   tickTimer: () => void;
@@ -47,17 +47,18 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
   loading: false,
   error: null,
 
-  startAttempt: async (questionSetId) => {
+  startAttempt: async (questionSetId, course = "all") => {
     set({ loading: true, error: null });
     try {
-      const { attempt, questions, responses } = await createFullHardAttempt(questionSetId);
+      const { attempt, questions, responses } = await createFullHardAttempt(questionSetId, course);
+      const moduleIndex = findModuleIndex(attempt);
       set({
         attempt,
         questions,
         responsesByQuestionId: mapResponses(responses),
-        moduleIndex: 0,
+        moduleIndex,
         questionIndex: 0,
-        remainingTimeSec: attempt.remainingTimeSec ?? getModuleDurationSec(0),
+        remainingTimeSec: attempt.remainingTimeSec ?? getModuleDurationSec(moduleIndex),
         timerHidden: false,
         loading: false
       });
@@ -191,7 +192,10 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
       return "result";
     }
 
-    if (moduleIndex === TEST_MODULES.length - 1) {
+    const activeModuleIndexes = getModuleIndexesForAttemptMode(attempt.mode);
+    const lastModuleIndex = activeModuleIndexes[activeModuleIndexes.length - 1] ?? TEST_MODULES.length - 1;
+
+    if (moduleIndex === lastModuleIndex) {
       await completeAttempt(attempt.id);
       set({
         attempt: { ...attempt, status: "completed", completedAt: new Date().toISOString() }
@@ -199,7 +203,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
       return "result";
     }
 
-    if (moduleIndex === 1) {
+    if (attempt.mode === "full_hard_practice" && moduleIndex === 1) {
       await saveAttemptPosition({
         attemptId: attempt.id,
         status: "section_break",
@@ -241,6 +245,13 @@ export function getQuestionResponse(
 
 function mapResponses(responses: ResponseRecord[]): Record<number, ResponseRecord> {
   return Object.fromEntries(responses.map((response) => [response.questionId, response]));
+}
+
+function findModuleIndex(attempt: Attempt): number {
+  const moduleIndex = TEST_MODULES.findIndex(
+    (spec) => spec.section === attempt.currentSection && spec.module === attempt.currentModule
+  );
+  return Math.max(0, moduleIndex);
 }
 
 async function upsertResponse(
