@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Frontend and Tauri build output
+dist/
+build/
+out/
+release/
+src-tauri/target/
+target/
+*.msi
+*.exe
+*.dmg
+*.app
+*.deb
+*.AppImage
+
+# Local app/user data
+*.db
+*.db-shm
+*.db-wal
+sat-practice-simulator.db
+app-data/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vite/
+.turbo/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

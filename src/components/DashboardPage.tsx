@@ -1,0 +1,211 @@
+import { useEffect, useState } from "react";
+import { CategoryTrendChart } from "./charts/CategoryTrendChart";
+import { SimpleLineChart } from "./charts/SimpleLineChart";
+import { getDashboardSummary } from "../services/dashboardService";
+import { buildRecommendedPractice } from "../services/recommendationService";
+import {
+  getCategoryTrend,
+  getScoreTrend,
+  getWeaknessTrend,
+  type CategoryTrendPoint,
+  type ScoreTrendMode,
+  type ScoreTrendPoint,
+  type TrendFilter,
+  type WeaknessTrend
+} from "../services/trendService";
+import type { DashboardSummary } from "../types";
+import { BreakdownTable } from "./result/BreakdownTable";
+import { DropdownSelect } from "./ui/DropdownSelect";
+
+export function DashboardPage() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [scoreTrend, setScoreTrend] = useState<ScoreTrendPoint[]>([]);
+  const [domainTrend, setDomainTrend] = useState<CategoryTrendPoint[]>([]);
+  const [skillTrend, setSkillTrend] = useState<CategoryTrendPoint[]>([]);
+  const [weaknessTrend, setWeaknessTrend] = useState<WeaknessTrend | null>(null);
+  const [trendFilter, setTrendFilter] = useState<TrendFilter>("last10");
+  const [scoreMode, setScoreMode] = useState<ScoreTrendMode>("all");
+
+  useEffect(() => {
+    getDashboardSummary().then(setSummary).catch(() => setSummary(null));
+  }, []);
+
+  useEffect(() => {
+    void Promise.all([
+      getScoreTrend(trendFilter),
+      getCategoryTrend("domain", trendFilter),
+      getCategoryTrend("skill", trendFilter),
+      getWeaknessTrend()
+    ]).then(([scores, domains, skills, weakness]) => {
+      setScoreTrend(scores);
+      setDomainTrend(domains);
+      setSkillTrend(skills);
+      setWeaknessTrend(weakness);
+    });
+  }, [trendFilter]);
+
+  if (!summary) {
+    return <div className="text-sm text-muted">Loading dashboard...</div>;
+  }
+
+  return (
+    <div className="space-y-7">
+      <section className="grid grid-cols-4 gap-5">
+        <Card label="Total Tests Taken" value={summary.totalTestsTaken.toString()} />
+        <Card label="Average Practice Score" value={summary.averagePracticeScore.toString()} />
+        <Card label="Best Practice Score" value={summary.bestPracticeScore.toString()} />
+        <Card label="Review List Count" value={summary.reviewListCount.toString()} />
+        <Card label="Average RW Score" value={summary.averageRwScore.toString()} />
+        <Card label="Average Math Score" value={summary.averageMathScore.toString()} />
+        <Card label="Total Questions Answered" value={summary.totalQuestionsAnswered.toString()} />
+        <Card label="Total Study Time" value={formatDuration(summary.totalStudyTimeSec)} />
+      </section>
+
+      <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">Score Trend Chart</h3>
+            <p className="mt-1 text-xs text-muted">Scores are estimates for practice only.</p>
+          </div>
+          <div className="grid min-w-[360px] grid-cols-2 gap-3">
+            <DropdownSelect
+              label="Range"
+              onChange={(value) => setTrendFilter(value as TrendFilter)}
+              options={[
+                { value: "last5", label: "Last 5 attempts" },
+                { value: "last10", label: "Last 10 attempts" },
+                { value: "last30days", label: "Last 30 days" },
+                { value: "all", label: "All time" }
+              ]}
+              value={trendFilter}
+            />
+            <DropdownSelect
+              label="Score"
+              onChange={(value) => setScoreMode(value as ScoreTrendMode)}
+              options={[
+                { value: "total", label: "Total" },
+                { value: "rw", label: "RW" },
+                { value: "math", label: "Math" },
+                { value: "all", label: "Total + RW + Math" }
+              ]}
+              value={scoreMode}
+            />
+          </div>
+        </div>
+        <div className="mt-5">
+          {scoreTrend.length === 0 ? (
+            <p className="text-sm text-muted">No graph data yet. Complete a practice test to see score trends.</p>
+          ) : (
+            <SimpleLineChart
+              max={scoreMode === "total" ? 1600 : scoreMode === "all" ? 1600 : 800}
+              min={scoreMode === "total" ? 400 : scoreMode === "all" ? 200 : 200}
+              series={buildScoreSeries(scoreTrend, scoreMode)}
+              xLabels={scoreTrend.map((point) => point.label)}
+            />
+          )}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-5">
+        <CategoryTrendChart points={domainTrend} title="Domain Trend Chart" />
+        <CategoryTrendChart points={skillTrend} title="Skill Trend Chart" />
+      </section>
+
+      <section className="grid grid-cols-2 gap-5">
+        <WeaknessTrendPanel trend={weaknessTrend} />
+        <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
+          <h3 className="font-semibold">Recommended Practice</h3>
+          <div className="mt-5 space-y-3">
+            {buildRecommendedPractice(summary.weakAreas).map((item) => (
+              <div className="rounded-md border border-line bg-slate-50 p-4 text-sm" key={item}>{item}</div>
+            ))}
+          </div>
+        </section>
+      </section>
+
+      <BreakdownTable rows={summary.weakAreas} title="Weak Areas" />
+      <BreakdownTable rows={summary.strongAreas} title="Strong Areas" />
+      <BreakdownTable
+        labelHeader="Visual Type"
+        rows={summary.visualPerformance}
+        title="Visual Question Performance"
+      />
+    </div>
+  );
+}
+
+function buildScoreSeries(points: ScoreTrendPoint[], mode: ScoreTrendMode) {
+  const series = [];
+  if (mode === "total" || mode === "all") {
+    series.push({ key: "total", label: "Total Practice Score", color: "#0f766e", values: points.map((point) => point.total) });
+  }
+  if (mode === "rw" || mode === "all") {
+    series.push({ key: "rw", label: "RW Practice Score", color: "#2563eb", values: points.map((point) => point.rw) });
+  }
+  if (mode === "math" || mode === "all") {
+    series.push({ key: "math", label: "Math Practice Score", color: "#db2777", values: points.map((point) => point.math) });
+  }
+  return series;
+}
+
+function WeaknessTrendPanel({ trend }: { trend: WeaknessTrend | null }) {
+  return (
+    <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
+      <h3 className="font-semibold">Weakness Trend</h3>
+      {!trend ? <p className="mt-4 text-sm text-muted">No weakness trend data yet.</p> : null}
+      {trend ? (
+        <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
+          <TrendList title="Weak Areas Now" values={trend.weakAreasNow} />
+          <TrendList title="Improved Areas" values={trend.improvedAreas} />
+          <TrendList title="Declining Areas" values={trend.decliningAreas} />
+          <TrendList title="Most Missed Topics" values={trend.mostMissedTopics} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function TrendList({ title, values }: { title: string; values: string[] }) {
+  return (
+    <div className="rounded-md border border-line bg-slate-50 p-4">
+      <div className="text-xs font-semibold uppercase text-slate-500">{title}</div>
+      <div className="mt-2 space-y-1">
+        {values.length === 0 ? <div className="text-xs text-muted">No data</div> : null}
+        {values.map((value) => <div key={value}>{value}</div>)}
+      </div>
+    </div>
+  );
+}
+
+function Card({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
+      <div className="text-2xl font-semibold">{value}</div>
+      <div className="mt-1 text-xs font-semibold uppercase text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+function TrendPanel({ title, values }: { title: string; values: number[] }) {
+  const max = Math.max(...values, 1);
+  return (
+    <div className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
+      <h3 className="font-semibold">{title}</h3>
+      <div className="mt-4 flex h-24 items-end gap-2">
+        {values.length === 0 ? <div className="text-sm text-muted">No data</div> : null}
+        {values.map((value, index) => (
+          <div className="flex flex-1 flex-col items-center gap-2" key={`${value}-${index}`}>
+            <div className="w-full rounded-t bg-teal-600" style={{ height: `${Math.max(8, (value / max) * 88)}px` }} />
+            <div className="text-xs text-muted">{value || "-"}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
