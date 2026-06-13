@@ -1,0 +1,12 @@
+{
+  "work_id": "dickens_christmas_carol",
+  "title": "A Christmas Carol",
+  "author": "Charles Dickens",
+  "publication_year": 1843,
+  "source_name": "Project Gutenberg sample text",
+  "source_url": "https://www.gutenberg.org/ebooks/46",
+  "rights_note": "Public-domain source metadata supplied for manual review; script does not determine legal clearance.",
+  "jurisdiction_note": "Review public-domain status for the intended distribution jurisdiction.",
+  "raw_file": "dickens_christmas_carol_sample.txt",
+  "genre": "fiction"
+}

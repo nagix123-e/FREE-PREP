@@ -1,0 +1,12 @@
+{
+  "work_id": "douglass_narrative",
+  "title": "Narrative of the Life of Frederick Douglass, an American Slave",
+  "author": "Frederick Douglass",
+  "publication_year": 1845,
+  "source_name": "Project Gutenberg sample HTML",
+  "source_url": "https://www.gutenberg.org/ebooks/23",
+  "rights_note": "Public-domain source metadata supplied for manual review; script does not determine legal clearance.",
+  "jurisdiction_note": "Review public-domain status for the intended distribution jurisdiction.",
+  "raw_file": "douglass_narrative_sample.html",
+  "genre": "memoir"
+}
