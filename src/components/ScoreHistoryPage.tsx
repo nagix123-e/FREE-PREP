@@ -43,67 +43,81 @@ export function ScoreHistoryPage() {
       ) : null}
 
       {attempts.length > 0 ? (
-        <table className="w-full table-fixed border-collapse text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-5 py-3">Date</th>
-              <th className="w-56 px-5 py-3">Question Set</th>
-              <th className="px-5 py-3">Mode</th>
-              <th className="px-5 py-3">Total Score</th>
-              <th className="px-5 py-3">RW Score</th>
-              <th className="px-5 py-3">Math Score</th>
-              <th className="px-5 py-3">Accuracy</th>
-              <th className="px-5 py-3">Duration</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {attempts.map((attempt) => (
-              <tr key={attempt.id}>
-                <td className="px-5 py-3">{formatDate(attempt.completedAt ?? attempt.startedAt)}</td>
-                <td className="csv-name-cell px-5 py-3 font-medium">
-                  <span className="csv-name-wrap">{attempt.questionSetName}</span>
-                </td>
-                <td className="px-5 py-3">{attempt.mode}</td>
-                <td className="px-5 py-3">{attempt.practiceScore ?? "-"}</td>
-                <td className="px-5 py-3">{attempt.rwScore ?? "-"}</td>
-                <td className="px-5 py-3">{attempt.mathScore ?? "-"}</td>
-                <td className="px-5 py-3">{attempt.accuracy}%</td>
-                <td className="px-5 py-3">{formatDuration(attempt.durationSec)}</td>
-                <td className="px-5 py-3">{attempt.status}</td>
-                <td className="px-5 py-3">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      className="rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
-                      onClick={() => navigate("result", attempt.questionSetId, attempt.id)}
-                      type="button"
-                    >
-                      Open Result
-                    </button>
-                    <button
-                      className="rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
-                      onClick={() => {
-                        setReviewFilterPreset("incorrect");
-                        navigate("reviewAnswers", attempt.questionSetId, attempt.id);
-                      }}
-                      type="button"
-                    >
-                      Review Mistakes
-                    </button>
-                    <button
-                      className="delete-gradient-button rounded-md px-3 py-2 text-xs font-semibold text-white"
-                      onClick={() => void handleDelete(attempt.id)}
-                      type="button"
-                    >
-                      Delete Attempt
-                    </button>
-                  </div>
-                </td>
+        <div className="score-history-table-wrap">
+          <table className="score-history-table w-full table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="score-history-col-date" />
+              <col className="score-history-col-set" />
+              <col className="score-history-col-mode" />
+              <col className="score-history-col-score" />
+              <col className="score-history-col-score" />
+              <col className="score-history-col-score" />
+              <col className="score-history-col-small" />
+              <col className="score-history-col-small" />
+              <col className="score-history-col-status" />
+              <col className="score-history-col-actions" />
+            </colgroup>
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Date</th>
+                <th className="px-5 py-3">Question Set</th>
+                <th className="px-5 py-3">Mode</th>
+                <th className="px-5 py-3">Total Score</th>
+                <th className="px-5 py-3">RW Score</th>
+                <th className="px-5 py-3">Math Score</th>
+                <th className="px-5 py-3">Accuracy</th>
+                <th className="px-5 py-3">Duration</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {attempts.map((attempt) => (
+                <tr key={attempt.id}>
+                  <td className="px-5 py-3">{formatDate(attempt.completedAt ?? attempt.startedAt)}</td>
+                  <td className="csv-name-cell px-5 py-3 font-medium">
+                    <span className="csv-name-wrap">{attempt.questionSetName}</span>
+                  </td>
+                  <td className="score-history-breakable px-5 py-3">{attempt.mode}</td>
+                  <td className="px-5 py-3">{attempt.practiceScore ?? "-"}</td>
+                  <td className="px-5 py-3">{attempt.rwScore ?? "-"}</td>
+                  <td className="px-5 py-3">{attempt.mathScore ?? "-"}</td>
+                  <td className="px-5 py-3">{attempt.accuracy}%</td>
+                  <td className="px-5 py-3">{formatDuration(attempt.durationSec)}</td>
+                  <td className="score-history-breakable px-5 py-3">{attempt.status}</td>
+                  <td className="px-4 py-3">
+                    <div className="score-history-actions">
+                      <button
+                        className="score-history-action-button rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+                        onClick={() => navigate("result", attempt.questionSetId, attempt.id)}
+                        type="button"
+                      >
+                        Open Result
+                      </button>
+                      <button
+                        className="score-history-action-button rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+                        onClick={() => {
+                          setReviewFilterPreset("incorrect");
+                          navigate("reviewAnswers", attempt.questionSetId, attempt.id);
+                        }}
+                        type="button"
+                      >
+                        Review Mistakes
+                      </button>
+                      <button
+                        className="delete-gradient-button score-history-action-button rounded-md px-3 py-2 text-xs font-semibold text-white"
+                        onClick={() => void handleDelete(attempt.id)}
+                        type="button"
+                      >
+                        Delete Attempt
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );
