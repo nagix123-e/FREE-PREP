@@ -38,14 +38,26 @@ export function ResultPage() {
     return <div className="text-sm text-muted">Loading result...</div>;
   }
 
+  const hasTotalScore = result.totalScore !== null;
+  const hasRwScore = result.rwScore !== null;
+  const hasMathScore = result.mathScore !== null;
+  const scoreTitle = hasTotalScore
+    ? "Total Practice Score"
+    : hasRwScore
+      ? "RW Practice Score"
+      : "Math Practice Score";
+
   return (
     <div className="space-y-6">
       <section className="rounded-md border border-line bg-white p-6 shadow-panel">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">Total Practice Score</h2>
+            <h2 className="text-2xl font-semibold">{scoreTitle}</h2>
             <p className="mt-2 text-sm text-slate-600">
               Scores are estimates for practice only. They are not official SAT scores.
+              {!hasTotalScore
+                ? " Complete the other section later to combine this with an estimated full practice score."
+                : ""}
             </p>
           </div>
           <div className="flex gap-3">
@@ -72,10 +84,16 @@ export function ResultPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <ScoreSummaryCard label="Total Practice Score" range="400-1600" score={result.totalScore} />
-          <ScoreSummaryCard label="RW Practice Score" range="200-800" score={result.rwScore} />
-          <ScoreSummaryCard label="Math Practice Score" range="200-800" score={result.mathScore} />
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {hasTotalScore ? (
+            <ScoreSummaryCard label="Total Practice Score" range="400-1600" score={result.totalScore} />
+          ) : null}
+          {hasRwScore ? (
+            <ScoreSummaryCard label="RW Practice Score" range="200-800" score={result.rwScore} />
+          ) : null}
+          {hasMathScore ? (
+            <ScoreSummaryCard label="Math Practice Score" range="200-800" score={result.mathScore} />
+          ) : null}
         </div>
 
         <div className="mt-6 grid grid-cols-6 gap-3 text-sm">

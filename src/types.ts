@@ -270,9 +270,9 @@ export interface BreakdownRow {
 
 export interface ScoreResult {
   attemptId: number;
-  totalScore: number;
-  rwScore: number;
-  mathScore: number;
+  totalScore: number | null;
+  rwScore: number | null;
+  mathScore: number | null;
   correct: number;
   incorrect: number;
   unanswered: number;

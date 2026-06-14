@@ -145,9 +145,27 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
 
   const rwRaw = calculateWeightedRawScore(gradedQuestions, "RW");
   const mathRaw = calculateWeightedRawScore(gradedQuestions, "MATH");
-  const rwScore = await calculateSectionScore({ questionSetId, section: "RW", ...rwRaw });
-  const mathScore = await calculateSectionScore({ questionSetId, section: "MATH", ...mathRaw });
-  const totalScore = calculateTotalScore(rwScore, mathScore);
+  const attemptedSections = getAttemptedSections(moduleIndexes);
+  let rwScore = attemptedSections.has("RW")
+    ? await calculateSectionScore({ questionSetId, section: "RW", ...rwRaw })
+    : null;
+  let mathScore = attemptedSections.has("MATH")
+    ? await calculateSectionScore({ questionSetId, section: "MATH", ...mathRaw })
+    : null;
+
+  const complementaryAttempt = await findComplementarySectionAttempt({
+    attemptId,
+    questionSetId,
+    mode: attempt.mode
+  });
+  if (rwScore === null && complementaryAttempt?.rwScore != null) {
+    rwScore = complementaryAttempt.rwScore;
+  }
+  if (mathScore === null && complementaryAttempt?.mathScore != null) {
+    mathScore = complementaryAttempt.mathScore;
+  }
+
+  const totalScore = rwScore !== null && mathScore !== null ? calculateTotalScore(rwScore, mathScore) : null;
   const result = buildScoreResult(attemptId, gradedQuestions, rwScore, mathScore, totalScore, moduleIndexes);
 
   await db.execute(
@@ -160,6 +178,15 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
      WHERE id = $5`,
     [totalScore, rwScore, mathScore, new Date().toISOString(), attemptId]
   );
+
+  if (complementaryAttempt && totalScore !== null) {
+    await saveCombinedScoreForComplementaryAttempt({
+      attemptId: complementaryAttempt.id,
+      rwScore,
+      mathScore,
+      totalScore
+    });
+  }
 
   return result;
 }
@@ -190,9 +217,9 @@ function gradeQuestion(question: Question, response: ResponseRecord | null): Gra
 function buildScoreResult(
   attemptId: number,
   gradedQuestions: GradedQuestion[],
-  rwScore: number,
-  mathScore: number,
-  totalScore: number,
+  rwScore: number | null,
+  mathScore: number | null,
+  totalScore: number | null,
   moduleIndexes: number[]
 ): ScoreResult {
   const correct = gradedQuestions.filter((item) => item.isCorrect).length;
@@ -249,6 +276,73 @@ function filterQuestionsForModules(questions: Question[], moduleIndexes: number[
         question.module === spec.module &&
         question.route === spec.route
     )
+  );
+}
+
+function getAttemptedSections(moduleIndexes: number[]): Set<Section> {
+  return new Set(
+    moduleIndexes
+      .map((index) => TEST_MODULES[index]?.section)
+      .filter((section): section is Section => section === "RW" || section === "MATH")
+  );
+}
+
+function getComplementaryAttemptMode(mode: AttemptMode): AttemptMode | null {
+  if (mode === "full_hard_rw_practice") {
+    return "full_hard_math_practice";
+  }
+  if (mode === "full_hard_math_practice") {
+    return "full_hard_rw_practice";
+  }
+  return null;
+}
+
+async function findComplementarySectionAttempt(input: {
+  attemptId: number;
+  questionSetId: number;
+  mode: AttemptMode;
+}): Promise<{ id: number; rwScore: number | null; mathScore: number | null } | null> {
+  const complementaryMode = getComplementaryAttemptMode(input.mode);
+  if (!complementaryMode) {
+    return null;
+  }
+
+  const db = await getDatabase();
+  const rows = await db.select<
+    Array<{ id: number; rw_score: number | null; math_score: number | null }>
+  >(
+    `SELECT id, rw_score, math_score
+     FROM attempts
+     WHERE question_set_id = $1
+       AND id != $2
+       AND mode = $3
+       AND status = 'completed'
+       AND (
+         ($3 = 'full_hard_rw_practice' AND rw_score IS NOT NULL)
+         OR ($3 = 'full_hard_math_practice' AND math_score IS NOT NULL)
+       )
+     ORDER BY COALESCE(completed_at, started_at) DESC, id DESC
+     LIMIT 1`,
+    [input.questionSetId, input.attemptId, complementaryMode]
+  );
+  const row = rows[0];
+  return row ? { id: row.id, rwScore: row.rw_score, mathScore: row.math_score } : null;
+}
+
+async function saveCombinedScoreForComplementaryAttempt(input: {
+  attemptId: number;
+  rwScore: number | null;
+  mathScore: number | null;
+  totalScore: number;
+}): Promise<void> {
+  const db = await getDatabase();
+  await db.execute(
+    `UPDATE attempts
+     SET practice_score = $1,
+         rw_score = COALESCE(rw_score, $2),
+         math_score = COALESCE(math_score, $3)
+     WHERE id = $4`,
+    [input.totalScore, input.rwScore, input.mathScore, input.attemptId]
   );
 }
 
