@@ -207,23 +207,13 @@ export function QuestionSetsScreen() {
                     >
                       {deletingSetId === set.id ? "Deleting..." : "Delete"}
                     </button>
-                    {set.packageType === "full_test" ? (
-                      <button
-                        className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
-                        onClick={() => navigate("testOverview", set.id)}
-                        type="button"
-                      >
-                        Start Test
-                      </button>
-                    ) : (
-                      <button
-                        className="rounded-md border border-line px-3 py-2 text-xs font-semibold text-slate-500"
-                        disabled
-                        type="button"
-                      >
-                        Combine First
-                      </button>
-                    )}
+                    <button
+                      className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
+                      onClick={() => navigate(set.packageType === "full_test" ? "testOverview" : "setup", set.id)}
+                      type="button"
+                    >
+                      {getStartButtonLabel(set.packageType)}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -233,6 +223,12 @@ export function QuestionSetsScreen() {
       ) : null}
     </section>
   );
+}
+
+function getStartButtonLabel(packageType: "full_test" | "rw_section" | "math_section"): string {
+  if (packageType === "rw_section") return "Start RW";
+  if (packageType === "math_section") return "Start Math";
+  return "Start Test";
 }
 
 function formatDate(value: string): string {

@@ -62,23 +62,15 @@ export function PreviewScreen() {
               RW {set.sectionCounts.RW} / Math {set.sectionCounts.MATH}
             </p>
           ) : null}
-          {set?.packageType === "full_test" ? (
+          {set ? (
             <button
               className="mt-3 w-full rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
-              onClick={() => navigate("testOverview", selectedSetId)}
+              onClick={() => navigate(set.packageType === "full_test" ? "testOverview" : "setup", selectedSetId)}
               type="button"
             >
-              Start Full Hard Practice Test
+              {getPreviewStartLabel(set.packageType)}
             </button>
-          ) : (
-            <button
-              className="mt-3 w-full rounded-md border border-line px-3 py-2 text-xs font-semibold text-slate-500"
-              disabled
-              type="button"
-            >
-              Combine with matching section first
-            </button>
-          )}
+          ) : null}
         </div>
         <div className="preview-question-list overflow-auto p-2">
           {questions.map((question) => (
@@ -110,6 +102,12 @@ export function PreviewScreen() {
       </section>
     </div>
   );
+}
+
+function getPreviewStartLabel(packageType: QuestionSet["packageType"]): string {
+  if (packageType === "rw_section") return "Start RW Only Practice Test";
+  if (packageType === "math_section") return "Start Math Only Practice Test";
+  return "Start Full Hard Practice Test";
 }
 
 function QuestionDetail({ question }: { question: Question }) {
