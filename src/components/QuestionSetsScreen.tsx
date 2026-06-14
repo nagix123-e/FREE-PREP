@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getPackageTypeLabel } from "../lib/csvValidation";
 import { combineSectionQuestionSets, deleteQuestionSet, listQuestionSets } from "../lib/database";
 import { useAppStore } from "../store/appStore";
+import { DropdownSelect, type DropdownOption } from "./ui/DropdownSelect";
 
 export function QuestionSetsScreen() {
   const { questionSets, setQuestionSets, navigate, setDbError } = useAppStore();
@@ -16,6 +17,14 @@ export function QuestionSetsScreen() {
 
   const rwSets = questionSets.filter((set) => set.packageType === "rw_section");
   const mathSets = questionSets.filter((set) => set.packageType === "math_section");
+  const rwPackageOptions: DropdownOption[] = [
+    { value: "0", label: "Select RW package" },
+    ...rwSets.map((set) => ({ value: set.id.toString(), label: set.name }))
+  ];
+  const mathPackageOptions: DropdownOption[] = [
+    { value: "0", label: "Select Math package" },
+    ...mathSets.map((set) => ({ value: set.id.toString(), label: set.name }))
+  ];
   const canCombine = rwSetId > 0 && mathSetId > 0 && combineName.trim() && !isCombining;
 
   useEffect(() => {
@@ -91,36 +100,22 @@ export function QuestionSetsScreen() {
           Select one RW Section Package and one Math Section Package to create a new Full Test Package.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-          <label className="text-xs font-semibold uppercase text-slate-500">
-            RW Package
-            <select
-              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm normal-case text-ink"
-              onChange={(event) => setRwSetId(Number(event.target.value))}
-              value={rwSetId}
-            >
-              <option value={0}>Select RW package</option>
-              {rwSets.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs font-semibold uppercase text-slate-500">
-            Math Package
-            <select
-              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm normal-case text-ink"
-              onChange={(event) => setMathSetId(Number(event.target.value))}
-              value={mathSetId}
-            >
-              <option value={0}>Select Math package</option>
-              {mathSets.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="min-w-0">
+            <DropdownSelect
+              label="RW Package"
+              onChange={(value) => setRwSetId(Number(value))}
+              options={rwPackageOptions}
+              value={rwSetId.toString()}
+            />
+          </div>
+          <div className="min-w-0">
+            <DropdownSelect
+              label="Math Package"
+              onChange={(value) => setMathSetId(Number(value))}
+              options={mathPackageOptions}
+              value={mathSetId.toString()}
+            />
+          </div>
           <label className="text-xs font-semibold uppercase text-slate-500">
             Combined Name
             <input
