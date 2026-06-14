@@ -44,12 +44,12 @@ Unsigned Windows apps may show a SmartScreen warning. This project does not requ
 ## macOS Install
 
 1. Open GitHub Releases.
-2. Download the `.dmg` file.
+2. Download the latest `.dmg` file.
 3. Open the `.dmg`.
 4. Drag SAT Practice Simulator into Applications.
 5. Launch it from Applications.
 
-If macOS warns that the app is from an unidentified developer, right-click the app and choose Open. Code signing and notarization are planned for a future release.
+Current macOS release builds are intended to be signed and notarized through GitHub Actions. If macOS says the app is damaged and should be moved to the Bin, delete that copy and download the newest signed `.dmg` from GitHub Releases instead of using an older unsigned build or Download ZIP.
 
 ## Linux Install
 
@@ -146,6 +146,8 @@ src-tauri/target/release/bundle/
 5. GitHub Actions release workflow builds Windows, macOS, and Linux packages.
 6. Download generated artifacts and confirm the release assets.
 
+macOS releases require Apple Developer ID signing and notarization secrets in GitHub Actions before tagging a release. See [docs/release-guide.md](docs/release-guide.md).
+
 See [docs/release-guide.md](docs/release-guide.md).
 
 ## Troubleshooting
@@ -153,7 +155,8 @@ See [docs/release-guide.md](docs/release-guide.md).
 - If CSV validation fails, check required headers and the 27/27/22/22 full-test count.
 - If a visual does not render, inspect `visual_type` and `visual_json`.
 - If the app cannot save, confirm the packaged app has access to its local app data directory.
-- Windows SmartScreen and macOS unidentified developer warnings can appear for unsigned builds.
+- Windows SmartScreen warnings can appear for unsigned Windows builds.
+- macOS "damaged and can't be opened" warnings usually mean the downloaded build was not signed and notarized. Use the latest signed `.dmg` from GitHub Releases.
 
 See [docs/troubleshooting.md](docs/troubleshooting.md).
 
