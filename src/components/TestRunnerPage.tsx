@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { applyHighlight } from "../services/highlightService";
+import { applyHighlight, removeHighlight, replaceHighlightColor } from "../services/highlightService";
 import { loadSettings } from "../services/settingsService";
 import { TEST_MODULES } from "../lib/testPlan";
 import { useAppStore } from "../store/appStore";
@@ -149,26 +149,33 @@ export function TestRunnerPage() {
     const selectedText = selection?.toString().trim() ?? "";
     if (!selection || selection.rangeCount === 0 || !selectedText) return;
     const range = selection.getRangeAt(0);
+    const existingMarker = findSelectedHighlightMarker(range);
+    const textForStorage = (existingMarker?.textContent ?? selectedText).trim();
+    if (!textForStorage) return;
     const passage = currentQuestion.passage || "";
-    const startOffset = Math.max(0, passage.indexOf(selectedText));
-    const action = await applyHighlight({
+    const startOffset = Math.max(0, passage.indexOf(textForStorage));
+    const highlightInput = {
       attemptId: attempt.id,
       questionId: currentQuestion.id,
-      selectedText,
+      selectedText: textForStorage,
       startOffset,
-      endOffset: startOffset + selectedText.length,
+      endOffset: startOffset + textForStorage.length,
       color
-    });
+    };
 
     try {
-      const existingMarker = findSelectedHighlightMarker(range);
       if (existingMarker) {
-        if (action === "removed") {
+        const existingColor = getHighlightMarkerColor(existingMarker);
+        if (existingColor === color) {
+          await removeHighlight(highlightInput);
           unwrapHighlightMarker(existingMarker);
         } else {
+          await replaceHighlightColor(highlightInput);
           setHighlightMarkerColor(existingMarker, color);
         }
-      } else if (action !== "removed") {
+      } else {
+        const action = await applyHighlight(highlightInput);
+        if (action === "removed") return;
         const marker = document.createElement("mark");
         marker.className = `practice-highlight practice-highlight-${color}`;
         range.surroundContents(marker);
@@ -323,6 +330,13 @@ function findSelectedHighlightMarker(range: Range): HTMLElement | null {
 function setHighlightMarkerColor(marker: HTMLElement, color: "yellow" | "blue" | "pink"): void {
   marker.classList.remove("practice-highlight-yellow", "practice-highlight-blue", "practice-highlight-pink");
   marker.classList.add(`practice-highlight-${color}`);
+}
+
+function getHighlightMarkerColor(marker: HTMLElement): "yellow" | "blue" | "pink" | null {
+  if (marker.classList.contains("practice-highlight-blue")) return "blue";
+  if (marker.classList.contains("practice-highlight-pink")) return "pink";
+  if (marker.classList.contains("practice-highlight-yellow")) return "yellow";
+  return null;
 }
 
 function unwrapHighlightMarker(marker: HTMLElement): void {

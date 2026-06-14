@@ -13,6 +13,7 @@ export function HighlightToolbar({
           aria-label={`Highlight ${color}`}
           className={`h-6 w-6 rounded-full border border-line ${colorClass(color)}`}
           key={color}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onHighlight(color)}
           type="button"
         />

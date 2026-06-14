@@ -55,6 +55,68 @@ export async function applyHighlight(input: Omit<HighlightRecord, "id" | "create
   return "created";
 }
 
+export async function removeHighlight(input: Omit<HighlightRecord, "id" | "createdAt">): Promise<void> {
+  const db = await getDatabase();
+  await db.execute(
+    `DELETE FROM highlights
+     WHERE attempt_id = $1
+       AND question_id = $2
+       AND (
+         (start_offset = $3 AND end_offset = $4)
+         OR (selected_text = $5 AND color = $6)
+       )`,
+    [
+      input.attemptId,
+      input.questionId,
+      input.startOffset,
+      input.endOffset,
+      input.selectedText,
+      input.color
+    ]
+  );
+}
+
+export async function replaceHighlightColor(input: Omit<HighlightRecord, "id" | "createdAt">): Promise<void> {
+  const db = await getDatabase();
+  const existingRows = await db.select<Array<{ id: number }>>(
+    `SELECT id
+     FROM highlights
+     WHERE attempt_id = $1
+       AND question_id = $2
+       AND (
+         (start_offset = $3 AND end_offset = $4)
+         OR selected_text = $5
+       )
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [input.attemptId, input.questionId, input.startOffset, input.endOffset, input.selectedText]
+  );
+  const existing = existingRows[0];
+
+  if (!existing) {
+    await saveHighlight(input);
+    return;
+  }
+
+  await db.execute(
+    `UPDATE highlights
+     SET selected_text = $1,
+         start_offset = $2,
+         end_offset = $3,
+         color = $4,
+         created_at = $5
+     WHERE id = $6`,
+    [
+      input.selectedText,
+      input.startOffset,
+      input.endOffset,
+      input.color,
+      new Date().toISOString(),
+      existing.id
+    ]
+  );
+}
+
 export async function listHighlights(attemptId: number, questionId?: number): Promise<HighlightRecord[]> {
   const db = await getDatabase();
   const rows = questionId
