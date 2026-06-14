@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { saveHighlight } from "../services/highlightService";
+import { applyHighlight } from "../services/highlightService";
 import { loadSettings } from "../services/settingsService";
 import { TEST_MODULES } from "../lib/testPlan";
 import { useAppStore } from "../store/appStore";
@@ -151,7 +151,7 @@ export function TestRunnerPage() {
     const range = selection.getRangeAt(0);
     const passage = currentQuestion.passage || "";
     const startOffset = Math.max(0, passage.indexOf(selectedText));
-    await saveHighlight({
+    const action = await applyHighlight({
       attemptId: attempt.id,
       questionId: currentQuestion.id,
       selectedText,
@@ -159,10 +159,20 @@ export function TestRunnerPage() {
       endOffset: startOffset + selectedText.length,
       color
     });
+
     try {
-      const marker = document.createElement("mark");
-      marker.className = `practice-highlight practice-highlight-${color}`;
-      range.surroundContents(marker);
+      const existingMarker = findSelectedHighlightMarker(range);
+      if (existingMarker) {
+        if (action === "removed") {
+          unwrapHighlightMarker(existingMarker);
+        } else {
+          setHighlightMarkerColor(existingMarker, color);
+        }
+      } else if (action !== "removed") {
+        const marker = document.createElement("mark");
+        marker.className = `practice-highlight practice-highlight-${color}`;
+        range.surroundContents(marker);
+      }
     } catch {
       // Saving still succeeds even if the browser cannot wrap a cross-node selection.
       const active = document.activeElement;
@@ -287,4 +297,40 @@ export function TestRunnerPage() {
       {shortcutsOpen ? <KeyboardShortcutHelp onClose={() => setShortcutsOpen(false)} /> : null}
     </div>
   );
+}
+
+function findSelectedHighlightMarker(range: Range): HTMLElement | null {
+  const start =
+    range.startContainer instanceof HTMLElement
+      ? range.startContainer
+      : range.startContainer.parentElement;
+  const end =
+    range.endContainer instanceof HTMLElement
+      ? range.endContainer
+      : range.endContainer.parentElement;
+  const startMarker = start?.closest("mark.practice-highlight");
+  const endMarker = end?.closest("mark.practice-highlight");
+
+  if (startMarker && startMarker === endMarker && startMarker instanceof HTMLElement) {
+    return startMarker;
+  }
+  if (startMarker && range.commonAncestorContainer === startMarker && startMarker instanceof HTMLElement) {
+    return startMarker;
+  }
+  return null;
+}
+
+function setHighlightMarkerColor(marker: HTMLElement, color: "yellow" | "blue" | "pink"): void {
+  marker.classList.remove("practice-highlight-yellow", "practice-highlight-blue", "practice-highlight-pink");
+  marker.classList.add(`practice-highlight-${color}`);
+}
+
+function unwrapHighlightMarker(marker: HTMLElement): void {
+  const parent = marker.parentNode;
+  if (!parent) return;
+  while (marker.firstChild) {
+    parent.insertBefore(marker.firstChild, marker);
+  }
+  parent.removeChild(marker);
+  parent.normalize();
 }

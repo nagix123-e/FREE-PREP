@@ -19,6 +19,42 @@ export async function saveHighlight(input: Omit<HighlightRecord, "id" | "created
   );
 }
 
+export async function applyHighlight(input: Omit<HighlightRecord, "id" | "createdAt">): Promise<"created" | "updated" | "removed"> {
+  const db = await getDatabase();
+  const existingRows = await db.select<Array<{ id: number; color: HighlightRecord["color"] }>>(
+    `SELECT id, color
+     FROM highlights
+     WHERE attempt_id = $1
+       AND question_id = $2
+       AND start_offset = $3
+       AND end_offset = $4
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [input.attemptId, input.questionId, input.startOffset, input.endOffset]
+  );
+  const existing = existingRows[0];
+
+  if (existing?.color === input.color) {
+    await db.execute("DELETE FROM highlights WHERE id = $1", [existing.id]);
+    return "removed";
+  }
+
+  if (existing) {
+    await db.execute(
+      `UPDATE highlights
+       SET selected_text = $1,
+           color = $2,
+           created_at = $3
+       WHERE id = $4`,
+      [input.selectedText, input.color, new Date().toISOString(), existing.id]
+    );
+    return "updated";
+  }
+
+  await saveHighlight(input);
+  return "created";
+}
+
 export async function listHighlights(attemptId: number, questionId?: number): Promise<HighlightRecord[]> {
   const db = await getDatabase();
   const rows = questionId
