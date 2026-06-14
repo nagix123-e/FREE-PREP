@@ -276,42 +276,43 @@ textarea:focus-visible {
 }
 
 .score-history-col-date {
-  width: 7.5%;
+  width: 8%;
 }
 
 .score-history-col-set {
-  width: 15%;
+  width: 13%;
 }
 
 .score-history-col-mode {
-  width: 17%;
+  width: 13%;
 }
 
 .score-history-col-score {
-  width: 7%;
+  width: 6.5%;
 }
 
 .score-history-col-small {
-  width: 9%;
+  width: 7.5%;
 }
 
 .score-history-col-status {
-  width: 10%;
+  width: 8%;
 }
 
 .score-history-col-actions {
-  width: 17.5%;
+  width: 22.5%;
 }
 
 .score-history-breakable,
-.score-history-table th {
+.score-history-table th,
+.score-history-table td {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .score-history-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 8px;
   justify-items: stretch;
 }
@@ -320,6 +321,8 @@ textarea:focus-visible {
   width: 100%;
   min-inline-size: 0 !important;
   justify-content: center;
+  overflow-wrap: anywhere;
+  white-space: normal !important;
 }
 
 @media (max-width: 1280px) {
