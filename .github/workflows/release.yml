@@ -9,8 +9,33 @@ permissions:
   contents: write
 
 jobs:
+  macos-signing-preflight:
+    name: Check macOS signing secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require Apple Developer ID secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for signed and notarized macOS releases."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Add the Apple Developer ID signing secrets before publishing a release."
+            exit 1
+          fi
+
   release:
     name: Build and release ${{ matrix.platform }}
+    needs: macos-signing-preflight
     strategy:
       fail-fast: false
       matrix:
@@ -50,11 +75,19 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "SAT Practice Simulator ${{ github.ref_name }}"
           releaseBody: |
             Desktop installers for SAT Practice Simulator.
+
+            macOS DMG builds are signed and notarized when the repository's Apple Developer ID secrets are configured.
 
             Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
 
