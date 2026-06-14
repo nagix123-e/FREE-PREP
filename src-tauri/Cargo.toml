@@ -1,6 +1,6 @@
 [package]
 name = "sat-practice-simulator"
-version = "0.1.0"
+version = "0.1.2"
 description = "A local SAT practice simulator for importing CSV-based practice tests."
 authors = ["SAT Practice Simulator"]
 edition = "2021"

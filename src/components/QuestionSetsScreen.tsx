@@ -62,10 +62,10 @@ export function QuestionSetsScreen() {
       ) : null}
 
       {questionSets.length > 0 ? (
-        <table className="w-full border-collapse text-left text-sm">
+        <table className="w-full table-fixed border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-6 py-3 font-semibold">Name</th>
+              <th className="w-[34%] px-6 py-3 font-semibold">Name</th>
               <th className="px-6 py-3 font-semibold">Imported</th>
               <th className="px-6 py-3 font-semibold">Questions</th>
               <th className="px-6 py-3 font-semibold">Status</th>
@@ -76,7 +76,7 @@ export function QuestionSetsScreen() {
             {questionSets.map((set) => (
               <tr className="hover:bg-slate-50" key={set.id}>
                 <td className="px-6 py-4">
-                  <div className="font-semibold text-ink">{set.name}</div>
+                  <div className="csv-name-wrap font-semibold text-ink">{set.name}</div>
                   <div className="mt-1 text-xs text-muted">{set.description || "No description"}</div>
                 </td>
                 <td className="px-6 py-4 text-slate-600">{formatDate(set.importedAt)}</td>

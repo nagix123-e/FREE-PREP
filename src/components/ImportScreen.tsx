@@ -110,7 +110,7 @@ export function ImportScreen() {
         </p>
 
         <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center hover:border-teal-600 hover:bg-teal-50">
-          <span className="text-sm font-semibold text-ink">
+          <span className="csv-name-wrap max-w-full text-sm font-semibold text-ink">
             {fileName ? fileName : "Choose CSV file"}
           </span>
           <span className="mt-2 text-xs text-muted">Parsed locally with Papa Parse</span>

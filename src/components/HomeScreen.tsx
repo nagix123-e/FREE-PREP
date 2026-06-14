@@ -69,7 +69,7 @@ export function HomeScreen() {
               onClick={() => navigate("result", attempt.questionSetId, attempt.id)}
               type="button"
             >
-              <span>{attempt.questionSetName}</span>
+              <span className="csv-name-wrap min-w-0">{attempt.questionSetName}</span>
               <span className="font-semibold">{attempt.practiceScore ?? "-"}</span>
             </button>
           ))}

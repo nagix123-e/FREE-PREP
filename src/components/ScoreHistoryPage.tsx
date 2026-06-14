@@ -43,11 +43,11 @@ export function ScoreHistoryPage() {
       ) : null}
 
       {attempts.length > 0 ? (
-        <table className="w-full border-collapse text-left text-sm">
+        <table className="w-full table-fixed border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-5 py-3">Date</th>
-              <th className="px-5 py-3">Question Set</th>
+              <th className="w-56 px-5 py-3">Question Set</th>
               <th className="px-5 py-3">Mode</th>
               <th className="px-5 py-3">Total Score</th>
               <th className="px-5 py-3">RW Score</th>
@@ -62,7 +62,9 @@ export function ScoreHistoryPage() {
             {attempts.map((attempt) => (
               <tr key={attempt.id}>
                 <td className="px-5 py-3">{formatDate(attempt.completedAt ?? attempt.startedAt)}</td>
-                <td className="px-5 py-3 font-medium">{attempt.questionSetName}</td>
+                <td className="csv-name-cell px-5 py-3 font-medium">
+                  <span className="csv-name-wrap">{attempt.questionSetName}</span>
+                </td>
                 <td className="px-5 py-3">{attempt.mode}</td>
                 <td className="px-5 py-3">{attempt.practiceScore ?? "-"}</td>
                 <td className="px-5 py-3">{attempt.rwScore ?? "-"}</td>

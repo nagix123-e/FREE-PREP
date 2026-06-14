@@ -51,7 +51,7 @@ export function PreviewScreen() {
     <div className="preview-layout-grid grid gap-6">
       <aside className="rounded-md border border-line bg-white shadow-panel">
         <div className="border-b border-line p-4">
-          <h2 className="font-semibold">{set?.name ?? "Question Set"}</h2>
+          <h2 className="csv-name-wrap font-semibold">{set?.name ?? "Question Set"}</h2>
           <p className="mt-1 text-xs text-muted">{questions.length} questions</p>
           <button
             className="mt-3 w-full rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"

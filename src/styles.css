@@ -1065,6 +1065,31 @@ textarea:focus-visible {
   text-decoration-color: #64748b !important;
 }
 
+.csv-name-wrap {
+  display: inline-block;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.csv-name-cell {
+  max-inline-size: 18rem;
+  min-inline-size: 10rem;
+  vertical-align: top;
+}
+
+.dropdown-menu__text {
+  display: inline-block;
+  min-inline-size: 0;
+  max-inline-size: min(34rem, 100%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  text-align: center;
+}
+
 .practice-highlight {
   border-radius: 0.18em;
   box-decoration-break: clone;

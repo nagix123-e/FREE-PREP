@@ -59,7 +59,7 @@ export function TestSetupPage() {
         </p>
 
         <div className="mt-6 rounded-md border border-line bg-slate-50 p-4">
-          <div className="text-sm font-semibold">{set?.name ?? "Selected Question Set"}</div>
+          <div className="csv-name-wrap text-sm font-semibold">{set?.name ?? "Selected Question Set"}</div>
           <div className="mt-1 text-sm text-muted">{set?.totalQuestions ?? 98} questions</div>
         </div>
 
