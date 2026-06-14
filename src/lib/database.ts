@@ -1,5 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
-import type { Question, QuestionSet, SetStatus } from "../types";
+import type { PackageType, Question, QuestionSet, Section, SetStatus } from "../types";
 
 const DB_URL = "sqlite:sat-practice-simulator.db";
 
@@ -31,9 +31,17 @@ export async function initializeSchema(db: Database): Promise<void> {
       description TEXT NOT NULL DEFAULT '',
       imported_at TEXT NOT NULL,
       total_questions INTEGER NOT NULL,
-      status TEXT NOT NULL
+      status TEXT NOT NULL,
+      package_type TEXT NOT NULL DEFAULT 'full_test',
+      source_filename TEXT NOT NULL DEFAULT '',
+      row_count INTEGER NOT NULL DEFAULT 0,
+      section_counts TEXT NOT NULL DEFAULT ''
     )
   `);
+  await ensureColumn(db, "question_sets", "package_type", "TEXT NOT NULL DEFAULT 'full_test'");
+  await ensureColumn(db, "question_sets", "source_filename", "TEXT NOT NULL DEFAULT ''");
+  await ensureColumn(db, "question_sets", "row_count", "INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(db, "question_sets", "section_counts", "TEXT NOT NULL DEFAULT ''");
   await db.execute(`
     CREATE TABLE IF NOT EXISTS questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -245,16 +253,37 @@ export async function saveQuestionSet(input: {
   description: string;
   questions: Question[];
   status: SetStatus;
+  packageType?: PackageType;
+  sourceFilename?: string;
+  rowCount?: number;
+  sectionCounts?: Record<Section, number>;
 }): Promise<QuestionSet> {
   const db = await getDatabase();
   const importedAt = new Date().toISOString();
   const questionSetId = createSqliteIntegerId();
+  const sectionCounts = input.sectionCounts ?? countSections(input.questions);
+  const packageType = input.packageType ?? inferPackageType(input.questions, input.questions.length, sectionCounts);
+  const rowCount = input.rowCount ?? input.questions.length;
 
   try {
     await db.execute(
-      `INSERT INTO question_sets (id, name, description, imported_at, total_questions, status)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [questionSetId, input.name, input.description, importedAt, input.questions.length, input.status]
+      `INSERT INTO question_sets (
+        id, name, description, imported_at, total_questions, status,
+        package_type, source_filename, row_count, section_counts
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        questionSetId,
+        input.name,
+        input.description,
+        importedAt,
+        input.questions.length,
+        input.status,
+        packageType,
+        input.sourceFilename ?? "",
+        rowCount,
+        JSON.stringify(sectionCounts)
+      ]
     );
 
     for (const question of input.questions) {
@@ -274,7 +303,11 @@ export async function saveQuestionSet(input: {
       description: input.description,
       importedAt,
       totalQuestions: input.questions.length,
-      status: input.status
+      status: input.status,
+      packageType,
+      sourceFilename: input.sourceFilename ?? "",
+      rowCount,
+      sectionCounts
     };
   } catch (error) {
     try {
@@ -293,7 +326,8 @@ export function createSqliteIntegerId(): number {
 export async function listQuestionSets(): Promise<QuestionSet[]> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
-    `SELECT id, name, description, imported_at, total_questions, status
+    `SELECT id, name, description, imported_at, total_questions, status,
+            package_type, source_filename, row_count, section_counts
      FROM question_sets
      ORDER BY imported_at DESC`
   );
@@ -303,7 +337,8 @@ export async function listQuestionSets(): Promise<QuestionSet[]> {
 export async function getQuestionSet(id: number): Promise<QuestionSet | null> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
-    `SELECT id, name, description, imported_at, total_questions, status
+    `SELECT id, name, description, imported_at, total_questions, status,
+            package_type, source_filename, row_count, section_counts
      FROM question_sets
      WHERE id = $1`,
     [id]
@@ -355,6 +390,57 @@ export async function listQuestions(questionSetId: number): Promise<Question[]> 
     [questionSetId]
   );
   return rows.map(toQuestion);
+}
+
+export async function combineSectionQuestionSets(input: {
+  rwSetId: number;
+  mathSetId: number;
+  name: string;
+  description: string;
+}): Promise<QuestionSet> {
+  if (input.rwSetId === input.mathSetId) {
+    throw new Error("Select one RW Section package and one Math Section package.");
+  }
+
+  const [rwSet, mathSet] = await Promise.all([
+    getQuestionSet(input.rwSetId),
+    getQuestionSet(input.mathSetId)
+  ]);
+  if (!rwSet || !mathSet) {
+    throw new Error("Could not find both source packages.");
+  }
+  if (rwSet.packageType !== "rw_section") {
+    throw new Error("The selected RW package must be an RW Section Package.");
+  }
+  if (mathSet.packageType !== "math_section") {
+    throw new Error("The selected Math package must be a Math Section Package.");
+  }
+
+  const [rwQuestions, mathQuestions] = await Promise.all([
+    listQuestions(input.rwSetId),
+    listQuestions(input.mathSetId)
+  ]);
+  validateSectionPackageForCombine("rw_section", rwQuestions);
+  validateSectionPackageForCombine("math_section", mathQuestions);
+
+  const duplicates = findDuplicateQuestionIds([...rwQuestions, ...mathQuestions]);
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate question_id values after combine: ${duplicates.join(", ")}`);
+  }
+
+  const combinedQuestions = [...rwQuestions, ...mathQuestions].map(({ id, questionSetId, ...question }) => question);
+  validateSectionPackageForCombine("full_test", combinedQuestions);
+
+  return saveQuestionSet({
+    name: input.name,
+    description: input.description,
+    questions: combinedQuestions,
+    status: "valid",
+    packageType: "full_test",
+    sourceFilename: "combined",
+    rowCount: combinedQuestions.length,
+    sectionCounts: countSections(combinedQuestions)
+  });
 }
 
 async function insertQuestion(db: Database, questionSetId: number, question: Question): Promise<void> {
@@ -433,6 +519,136 @@ function nullableNumberValue(value: unknown): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+const PACKAGE_EXPECTED_COUNTS: Record<PackageType, Record<string, number>> = {
+  full_test: {
+    "RW-1-base": 27,
+    "RW-2-hard": 27,
+    "MATH-1-base": 22,
+    "MATH-2-hard": 22
+  },
+  rw_section: {
+    "RW-1-base": 27,
+    "RW-2-hard": 27
+  },
+  math_section: {
+    "MATH-1-base": 22,
+    "MATH-2-hard": 22
+  }
+};
+
+const PACKAGE_EXPECTED_TOTALS: Record<PackageType, number> = {
+  full_test: 98,
+  rw_section: 54,
+  math_section: 44
+};
+
+function countSections(questions: Question[]): Record<Section, number> {
+  return questions.reduce<Record<Section, number>>(
+    (counts, question) => {
+      counts[question.section] = (counts[question.section] ?? 0) + 1;
+      return counts;
+    },
+    { RW: 0, MATH: 0 }
+  );
+}
+
+function inferPackageType(
+  questions: Question[],
+  rowCount: number,
+  sectionCounts: Record<Section, number>
+): PackageType {
+  const hasRw = sectionCounts.RW > 0;
+  const hasMath = sectionCounts.MATH > 0;
+  if (hasRw && hasMath) return "full_test";
+  if (hasRw && !hasMath) return "rw_section";
+  if (hasMath && !hasRw) return "math_section";
+  return rowCount === 44 && questions.every((question) => question.section === "MATH")
+    ? "math_section"
+    : "full_test";
+}
+
+function inferPackageTypeFromMetadata(
+  totalQuestions: number,
+  sectionCounts: Record<Section, number>
+): PackageType {
+  const hasRw = sectionCounts.RW > 0;
+  const hasMath = sectionCounts.MATH > 0;
+  if (hasRw && !hasMath) return "rw_section";
+  if (hasMath && !hasRw) return "math_section";
+  if (totalQuestions === 54 && sectionCounts.RW === 54) return "rw_section";
+  if (totalQuestions === 44 && sectionCounts.MATH === 44) return "math_section";
+  return "full_test";
+}
+
+function isPackageType(value: unknown): value is PackageType {
+  return value === "full_test" || value === "rw_section" || value === "math_section";
+}
+
+function parseSectionCounts(value: string | null): Record<Section, number> {
+  if (!value) {
+    return { RW: 0, MATH: 0 };
+  }
+  try {
+    const parsed = JSON.parse(value) as Partial<Record<Section, unknown>>;
+    return {
+      RW: Number(parsed.RW) || 0,
+      MATH: Number(parsed.MATH) || 0
+    };
+  } catch {
+    return { RW: 0, MATH: 0 };
+  }
+}
+
+function validateSectionPackageForCombine(packageType: PackageType, questions: Question[]): void {
+  const expectedTotal = PACKAGE_EXPECTED_TOTALS[packageType];
+  if (questions.length !== expectedTotal) {
+    throw new Error(`${formatPackageType(packageType)} requires ${expectedTotal} rows; found ${questions.length}.`);
+  }
+
+  const counts = questions.reduce<Record<string, number>>((nextCounts, question) => {
+    const key = `${question.section}-${question.module}-${question.route}`;
+    nextCounts[key] = (nextCounts[key] ?? 0) + 1;
+    return nextCounts;
+  }, {});
+
+  const expectedCounts = PACKAGE_EXPECTED_COUNTS[packageType];
+  for (const [key, expected] of Object.entries(expectedCounts)) {
+    const actual = counts[key] ?? 0;
+    if (actual !== expected) {
+      throw new Error(`Expected ${formatCountKey(key)} ${expected}, found ${actual}.`);
+    }
+  }
+
+  for (const [key, actual] of Object.entries(counts)) {
+    if (actual > 0 && !(key in expectedCounts)) {
+      throw new Error(`${formatCountKey(key)} is not allowed in ${formatPackageType(packageType)}; found ${actual}.`);
+    }
+  }
+}
+
+function findDuplicateQuestionIds(questions: Question[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const question of questions) {
+    if (seen.has(question.questionId)) {
+      duplicates.add(question.questionId);
+    }
+    seen.add(question.questionId);
+  }
+  return [...duplicates];
+}
+
+function formatPackageType(packageType: PackageType): string {
+  if (packageType === "rw_section") return "RW section package";
+  if (packageType === "math_section") return "Math section package";
+  return "Full test package";
+}
+
+function formatCountKey(key: string): string {
+  const [section, moduleNumber, route] = key.split("-");
+  return `${section} Module ${moduleNumber} ${route}`;
+}
+
 interface QuestionSetRow {
   id: number;
   name: string;
@@ -440,6 +656,10 @@ interface QuestionSetRow {
   imported_at: string;
   total_questions: number;
   status: SetStatus;
+  package_type: PackageType | null;
+  source_filename: string | null;
+  row_count: number | null;
+  section_counts: string | null;
 }
 
 interface QuestionRow {
@@ -488,13 +708,22 @@ interface QuestionRow {
 }
 
 function toQuestionSet(row: QuestionSetRow): QuestionSet {
+  const sectionCounts = parseSectionCounts(row.section_counts);
+  const rowCount = row.row_count && row.row_count > 0 ? row.row_count : row.total_questions;
+  const packageType = isPackageType(row.package_type)
+    ? row.package_type
+    : inferPackageTypeFromMetadata(row.total_questions, sectionCounts);
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     importedAt: row.imported_at,
     totalQuestions: row.total_questions,
-    status: row.status
+    status: row.status,
+    packageType,
+    sourceFilename: row.source_filename ?? "",
+    rowCount,
+    sectionCounts
   };
 }
 

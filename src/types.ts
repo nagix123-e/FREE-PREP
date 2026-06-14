@@ -18,6 +18,7 @@ export type VisualType =
   | "box_plot"
   | "pie_chart";
 export type SetStatus = "valid" | "warning";
+export type PackageType = "full_test" | "rw_section" | "math_section";
 export type AttemptStatus = "in_progress" | "module_review" | "section_break" | "completed" | "paused";
 export type AttemptMode =
   | "full_hard_practice"
@@ -159,6 +160,10 @@ export interface QuestionSet {
   importedAt: string;
   totalQuestions: number;
   status: SetStatus;
+  packageType: PackageType;
+  sourceFilename: string;
+  rowCount: number;
+  sectionCounts: Record<Section, number>;
 }
 
 export interface Attempt {
@@ -313,6 +318,9 @@ export interface ValidationSummary {
   visualTypeCounts: Record<string, number>;
   contentDomainCounts: Record<string, number>;
   skillGroupCounts: Record<string, number>;
+  packageType: PackageType | null;
+  rowCount: number;
+  sectionCounts: Record<Section, number>;
 }
 
 export type RouteKey =

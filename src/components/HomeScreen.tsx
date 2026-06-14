@@ -24,8 +24,8 @@ export function HomeScreen() {
         <div className="safe-card-padding-lg rounded-md border border-line bg-white p-7 shadow-panel">
           <h2 className="text-2xl font-semibold tracking-tight">Build a local SAT practice library.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Import GPT-generated SAT-style CSV files, validate the full 98-question structure, and
-            keep saved question sets on this device for future practice sessions.
+            Import GPT-generated SAT-style CSV files, validate full, RW-only, or Math-only packages,
+            and keep saved question sets on this device for future practice sessions.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             {resumableAttempt ? (

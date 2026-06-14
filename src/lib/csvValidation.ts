@@ -2,6 +2,7 @@ import * as Papa from "papaparse";
 import type { ParseResult } from "papaparse";
 import {
   type ModuleNumber,
+  type PackageType,
   type Question,
   type QuestionType,
   type RawCsvQuestion,
@@ -18,6 +19,30 @@ const EXPECTED_COUNTS = new Map([
   ["MATH-1-base", 22],
   ["MATH-2-hard", 22]
 ]);
+
+const PACKAGE_RULES: Record<
+  PackageType,
+  { totalRows: number; keys: string[]; label: string; allowedSections: Section[] }
+> = {
+  full_test: {
+    totalRows: 98,
+    keys: ["RW-1-base", "RW-2-hard", "MATH-1-base", "MATH-2-hard"],
+    label: "Full test",
+    allowedSections: ["RW", "MATH"]
+  },
+  rw_section: {
+    totalRows: 54,
+    keys: ["RW-1-base", "RW-2-hard"],
+    label: "RW section",
+    allowedSections: ["RW"]
+  },
+  math_section: {
+    totalRows: 44,
+    keys: ["MATH-1-base", "MATH-2-hard"],
+    label: "Math section",
+    allowedSections: ["MATH"]
+  }
+};
 
 const CSV_ROW_OFFSET = 2;
 const REQUIRED_IMPORT_HEADERS = [
@@ -92,6 +117,9 @@ export function parseCsvFile(file: File): Promise<ValidationSummary> {
           visualTypeCounts: {},
           contentDomainCounts: {},
           skillGroupCounts: {},
+          packageType: null,
+          rowCount: 0,
+          sectionCounts: emptySectionCounts(),
           issues: [{ level: "error", message: `CSV parse error: ${error.message}` }]
         })
     });
@@ -123,6 +151,9 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
       visualTypeCounts: {},
       contentDomainCounts: {},
       skillGroupCounts: {},
+      packageType: null,
+      rowCount: 0,
+      sectionCounts: emptySectionCounts(),
       issues
     };
   }
@@ -133,6 +164,7 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
   const visualTypeCounts: Record<string, number> = {};
   const contentDomainCounts: Record<string, number> = {};
   const skillGroupCounts: Record<string, number> = {};
+  const sectionCounts = emptySectionCounts();
 
   result.data.forEach((row, index) => {
     const rowNumber = index + CSV_ROW_OFFSET;
@@ -149,6 +181,7 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
     const route = raw.route as Route;
     const key = countKey(section, moduleNumber, route);
     counts[key] = (counts[key] ?? 0) + 1;
+    sectionCounts[section] = (sectionCounts[section] ?? 0) + 1;
     const visualType = raw.visual_type || "none";
     const contentDomain = raw.content_domain || "Unspecified";
     const skillGroup = raw.skill_group || "Unspecified";
@@ -158,21 +191,16 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
     questions.push(toQuestion(raw, section, moduleNumber, route, raw.question_type as QuestionType));
   });
 
-  for (const [key, expected] of EXPECTED_COUNTS) {
-    const actual = counts[key] ?? 0;
-    if (actual !== expected) {
-      issues.push({
-        level: "error",
-        message: `${key.split("-").join(" ")} must contain ${expected} questions; found ${actual}.`
-      });
-    }
-  }
-
-  if (questions.length !== 98) {
+  const packageType = detectPackageType(questions);
+  if (!packageType && questions.length > 0) {
     issues.push({
       level: "error",
-      message: `Full test must contain 98 questions; found ${questions.length}.`
+      message: "Invalid section values. Expected all RW, all MATH, or a complete RW/MATH full test."
     });
+  }
+
+  if (packageType) {
+    validatePackageCounts(packageType, questions.length, counts, sectionCounts, issues);
   }
 
   return {
@@ -182,8 +210,80 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
     visualTypeCounts,
     contentDomainCounts,
     skillGroupCounts,
+    packageType,
+    rowCount: questions.length,
+    sectionCounts,
     issues
   };
+}
+
+export function getPackageTypeLabel(packageType: PackageType): string {
+  if (packageType === "full_test") return "Full Test Package";
+  if (packageType === "rw_section") return "RW Section Package";
+  return "Math Section Package";
+}
+
+function detectPackageType(questions: Question[]): PackageType | null {
+  const sections = new Set(questions.map((question) => question.section));
+  if (sections.has("RW") && sections.has("MATH")) return "full_test";
+  if (sections.size === 1 && sections.has("RW")) return "rw_section";
+  if (sections.size === 1 && sections.has("MATH")) return "math_section";
+  return null;
+}
+
+function validatePackageCounts(
+  packageType: PackageType,
+  rowCount: number,
+  counts: Record<string, number>,
+  sectionCounts: Record<Section, number>,
+  issues: ValidationIssue[]
+): void {
+  const rule = PACKAGE_RULES[packageType];
+  const disallowedSections = (["RW", "MATH"] as Section[]).filter(
+    (section) => !rule.allowedSections.includes(section) && sectionCounts[section] > 0
+  );
+  for (const section of disallowedSections) {
+    issues.push({
+      level: "error",
+      message: `${rule.label} package cannot contain ${section} rows; found ${sectionCounts[section]}.`
+    });
+  }
+
+  for (const key of rule.keys) {
+    const expected = EXPECTED_COUNTS.get(key) ?? 0;
+    const actual = counts[key] ?? 0;
+    if (actual !== expected) {
+      issues.push({
+        level: "error",
+        message: `Expected ${formatCountKey(key)} ${expected}, found ${actual}.`
+      });
+    }
+  }
+
+  for (const [key, actual] of Object.entries(counts)) {
+    if (actual > 0 && !rule.keys.includes(key)) {
+      issues.push({
+        level: "error",
+        message: `${formatCountKey(key)} is not allowed in ${rule.label} package; found ${actual}.`
+      });
+    }
+  }
+
+  if (rowCount !== rule.totalRows) {
+    issues.push({
+      level: "error",
+      message: `${rule.label} package requires ${rule.totalRows} rows; found ${rowCount}.`
+    });
+  }
+}
+
+function formatCountKey(key: string): string {
+  const [section, moduleNumber, route] = key.split("-");
+  return `${section} Module ${moduleNumber} ${route}`;
+}
+
+function emptySectionCounts(): Record<Section, number> {
+  return { RW: 0, MATH: 0 };
 }
 
 function getMissingHeaders(fields: string[]): string[] {

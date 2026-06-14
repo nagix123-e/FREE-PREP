@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { deleteQuestionSet, listQuestionSets } from "../lib/database";
+import { getPackageTypeLabel } from "../lib/csvValidation";
+import { combineSectionQuestionSets, deleteQuestionSet, listQuestionSets } from "../lib/database";
 import { useAppStore } from "../store/appStore";
 
 export function QuestionSetsScreen() {
@@ -7,6 +8,15 @@ export function QuestionSetsScreen() {
   const [loading, setLoading] = useState(false);
   const [deletingSetId, setDeletingSetId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [rwSetId, setRwSetId] = useState(0);
+  const [mathSetId, setMathSetId] = useState(0);
+  const [combineName, setCombineName] = useState("SAT_questions.(1)");
+  const [combineError, setCombineError] = useState("");
+  const [isCombining, setIsCombining] = useState(false);
+
+  const rwSets = questionSets.filter((set) => set.packageType === "rw_section");
+  const mathSets = questionSets.filter((set) => set.packageType === "math_section");
+  const canCombine = rwSetId > 0 && mathSetId > 0 && combineName.trim() && !isCombining;
 
   useEffect(() => {
     setLoading(true);
@@ -38,6 +48,34 @@ export function QuestionSetsScreen() {
     }
   }
 
+  async function handleCombine() {
+    if (!canCombine) {
+      setCombineError("Select one RW Section package, one Math Section package, and a combined set name.");
+      return;
+    }
+
+    setIsCombining(true);
+    setCombineError("");
+    try {
+      const saved = await combineSectionQuestionSets({
+        rwSetId,
+        mathSetId,
+        name: combineName.trim(),
+        description: "Combined RW and Math section packages."
+      });
+      const sets = await listQuestionSets();
+      setQuestionSets(sets);
+      setDbError(null);
+      navigate("preview", saved.id);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not combine section packages.";
+      setCombineError(message);
+      setDbError(message);
+    } finally {
+      setIsCombining(false);
+    }
+  }
+
   return (
     <section className="rounded-md border border-line bg-white shadow-panel">
       <div className="flex items-center justify-between border-b border-line px-6 py-4">
@@ -45,6 +83,68 @@ export function QuestionSetsScreen() {
           <h2 className="text-lg font-semibold">Saved Question Sets</h2>
           <p className="mt-1 text-sm text-muted">Imported sets are stored in local SQLite.</p>
         </div>
+      </div>
+
+      <div className="border-b border-line px-6 py-5">
+        <h3 className="text-sm font-semibold text-ink">Combine Section Packages</h3>
+        <p className="mt-1 text-xs text-muted">
+          Select one RW Section Package and one Math Section Package to create a new Full Test Package.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+          <label className="text-xs font-semibold uppercase text-slate-500">
+            RW Package
+            <select
+              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm normal-case text-ink"
+              onChange={(event) => setRwSetId(Number(event.target.value))}
+              value={rwSetId}
+            >
+              <option value={0}>Select RW package</option>
+              {rwSets.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {set.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold uppercase text-slate-500">
+            Math Package
+            <select
+              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm normal-case text-ink"
+              onChange={(event) => setMathSetId(Number(event.target.value))}
+              value={mathSetId}
+            >
+              <option value={0}>Select Math package</option>
+              {mathSets.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {set.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold uppercase text-slate-500">
+            Combined Name
+            <input
+              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm normal-case text-ink"
+              onChange={(event) => setCombineName(event.target.value)}
+              value={combineName}
+            />
+          </label>
+          <div className="flex items-end">
+            <button
+              className="rounded-md bg-teal-700 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={!canCombine}
+              onClick={() => void handleCombine()}
+              type="button"
+            >
+              {isCombining ? "Combining..." : "Combine"}
+            </button>
+          </div>
+        </div>
+        {combineError ? (
+          <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {combineError}
+          </div>
+        ) : null}
       </div>
 
       {loading ? <div className="p-6 text-sm text-muted">Loading...</div> : null}
@@ -67,6 +167,7 @@ export function QuestionSetsScreen() {
             <tr>
               <th className="w-[34%] px-6 py-3 font-semibold">Name</th>
               <th className="px-6 py-3 font-semibold">Imported</th>
+              <th className="px-6 py-3 font-semibold">Type</th>
               <th className="px-6 py-3 font-semibold">Questions</th>
               <th className="px-6 py-3 font-semibold">Status</th>
               <th className="px-6 py-3 font-semibold"></th>
@@ -80,6 +181,14 @@ export function QuestionSetsScreen() {
                   <div className="mt-1 text-xs text-muted">{set.description || "No description"}</div>
                 </td>
                 <td className="px-6 py-4 text-slate-600">{formatDate(set.importedAt)}</td>
+                <td className="px-6 py-4 text-slate-600">
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                    {getPackageTypeLabel(set.packageType)}
+                  </span>
+                  <div className="mt-1 text-xs text-muted">
+                    RW {set.sectionCounts.RW} / Math {set.sectionCounts.MATH}
+                  </div>
+                </td>
                 <td className="px-6 py-4 text-slate-600">{set.totalQuestions}</td>
                 <td className="px-6 py-4">
                   <span className="rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700">
@@ -103,13 +212,23 @@ export function QuestionSetsScreen() {
                     >
                       {deletingSetId === set.id ? "Deleting..." : "Delete"}
                     </button>
-                    <button
-                      className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
-                      onClick={() => navigate("testOverview", set.id)}
-                      type="button"
-                    >
-                      Start Test
-                    </button>
+                    {set.packageType === "full_test" ? (
+                      <button
+                        className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
+                        onClick={() => navigate("testOverview", set.id)}
+                        type="button"
+                      >
+                        Start Test
+                      </button>
+                    ) : (
+                      <button
+                        className="rounded-md border border-line px-3 py-2 text-xs font-semibold text-slate-500"
+                        disabled
+                        type="button"
+                      >
+                        Combine First
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

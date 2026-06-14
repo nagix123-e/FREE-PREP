@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { parseCsvFile } from "../lib/csvValidation";
+import { getPackageTypeLabel, parseCsvFile } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import { useAppStore } from "../store/appStore";
 import type { ValidationSummary } from "../types";
@@ -25,12 +25,7 @@ export function ImportScreen() {
   });
   const canSave = Boolean(summary?.valid && setName.trim() && !isSaving && !isParsing);
   const orderedCounts = useMemo(
-    () => [
-      ["RW Module 1 base", summary?.counts["RW-1-base"] ?? 0, 27],
-      ["RW Module 2 hard", summary?.counts["RW-2-hard"] ?? 0, 27],
-      ["Math Module 1 base", summary?.counts["MATH-1-base"] ?? 0, 22],
-      ["Math Module 2 hard", summary?.counts["MATH-2-hard"] ?? 0, 22]
-    ] as const,
+    () => getExpectedCountRows(summary),
     [summary]
   );
   const visualTypeRows = useMemo(
@@ -45,7 +40,8 @@ export function ImportScreen() {
     () => toSummaryRows(summary?.skillGroupCounts ?? {}),
     [summary]
   );
-  const fullTestCount = summary?.questions.length ?? 0;
+  const expectedRowCount = getExpectedRowCount(summary);
+  const rowCount = summary?.rowCount ?? 0;
 
   async function handleFile(file: File | null) {
     if (!file) {
@@ -85,7 +81,11 @@ export function ImportScreen() {
         name: setName.trim(),
         description: description.trim(),
         questions: summary.questions,
-        status: summary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid"
+        status: summary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid",
+        packageType: summary.packageType ?? undefined,
+        sourceFilename: fileName,
+        rowCount: summary.rowCount,
+        sectionCounts: summary.sectionCounts
       });
       const sets = await listQuestionSets();
       setQuestionSets(sets);
@@ -106,7 +106,7 @@ export function ImportScreen() {
         <h2 className="text-lg font-semibold">Import a SAT-format CSV</h2>
         <p className="mt-2 text-sm text-slate-600">
           The importer checks headers, route rules, question types, duplicate IDs, and the required
-          27/27/22/22 full-test counts.
+          full-test, RW-only, or Math-only counts.
         </p>
 
         <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center hover:border-teal-600 hover:bg-teal-50">
@@ -202,6 +202,25 @@ export function ImportScreen() {
             </div>
 
             <div className="space-y-2">
+              <div className="rounded-md border border-line bg-slate-50 p-3 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-semibold text-slate-700">Detected package</span>
+                  <span className="font-semibold text-ink">
+                    {summary.packageType ? getPackageTypeLabel(summary.packageType) : "Unknown"}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-4 text-xs text-muted">
+                  <span>Rows</span>
+                  <span>
+                    {rowCount}
+                    {expectedRowCount ? `/${expectedRowCount}` : ""}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-4 text-xs text-muted">
+                  <span>Sections</span>
+                  <span>RW {summary.sectionCounts.RW} / Math {summary.sectionCounts.MATH}</span>
+                </div>
+              </div>
               <div className="text-sm font-semibold">Module Counts</div>
               {orderedCounts.map(([label, actual, expected]) => (
                 <div className="flex items-center justify-between text-sm" key={label}>
@@ -211,10 +230,10 @@ export function ImportScreen() {
                   </span>
                 </div>
               ))}
-              <div className="flex items-center justify-between border-t border-line pt-2 text-sm" key="full-test-count">
-                <span className="font-semibold text-slate-700">Full Test</span>
-                <span className={fullTestCount === 98 ? "font-semibold" : "font-semibold text-red-700"}>
-                  {fullTestCount}/98
+              <div className="flex items-center justify-between border-t border-line pt-2 text-sm" key="row-count">
+                <span className="font-semibold text-slate-700">Package Rows</span>
+                <span className={rowCount === expectedRowCount ? "font-semibold" : "font-semibold text-red-700"}>
+                  {rowCount}/{expectedRowCount || "?"}
                 </span>
               </div>
             </div>
@@ -273,6 +292,32 @@ function getSaveReadinessMessage({
 
 function toSummaryRows(counts: Record<string, number>): Array<[string, number]> {
   return Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+function getExpectedCountRows(summary: ValidationSummary | null): Array<[string, number, number]> {
+  const counts = summary?.counts ?? {};
+  const packageType = summary?.packageType;
+  const allRows: Array<[string, number, number, "RW" | "MATH"]> = [
+    ["RW Module 1 base", counts["RW-1-base"] ?? 0, 27, "RW"],
+    ["RW Module 2 hard", counts["RW-2-hard"] ?? 0, 27, "RW"],
+    ["Math Module 1 base", counts["MATH-1-base"] ?? 0, 22, "MATH"],
+    ["Math Module 2 hard", counts["MATH-2-hard"] ?? 0, 22, "MATH"]
+  ];
+
+  return allRows
+    .filter(([, , , section]) => {
+      if (packageType === "rw_section") return section === "RW";
+      if (packageType === "math_section") return section === "MATH";
+      return true;
+    })
+    .map(([label, actual, expected]): [string, number, number] => [label, actual, expected]);
+}
+
+function getExpectedRowCount(summary: ValidationSummary | null): number {
+  if (summary?.packageType === "rw_section") return 54;
+  if (summary?.packageType === "math_section") return 44;
+  if (summary?.packageType === "full_test") return 98;
+  return 0;
 }
 
 function errorToMessage(error: unknown, fallback: string): string {

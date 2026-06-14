@@ -1,5 +1,6 @@
 import katex from "katex";
 import { useEffect, useMemo, useState } from "react";
+import { getPackageTypeLabel } from "../lib/csvValidation";
 import { getQuestionSet, listQuestions } from "../lib/database";
 import { useAppStore } from "../store/appStore";
 import type { Question, QuestionSet } from "../types";
@@ -52,14 +53,32 @@ export function PreviewScreen() {
       <aside className="rounded-md border border-line bg-white shadow-panel">
         <div className="border-b border-line p-4">
           <h2 className="csv-name-wrap font-semibold">{set?.name ?? "Question Set"}</h2>
-          <p className="mt-1 text-xs text-muted">{questions.length} questions</p>
-          <button
-            className="mt-3 w-full rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
-            onClick={() => navigate("testOverview", selectedSetId)}
-            type="button"
-          >
-            Start Full Hard Practice Test
-          </button>
+          <p className="mt-1 text-xs text-muted">
+            {questions.length} questions
+            {set ? ` · ${getPackageTypeLabel(set.packageType)}` : ""}
+          </p>
+          {set ? (
+            <p className="mt-1 text-xs text-muted">
+              RW {set.sectionCounts.RW} / Math {set.sectionCounts.MATH}
+            </p>
+          ) : null}
+          {set?.packageType === "full_test" ? (
+            <button
+              className="mt-3 w-full rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
+              onClick={() => navigate("testOverview", selectedSetId)}
+              type="button"
+            >
+              Start Full Hard Practice Test
+            </button>
+          ) : (
+            <button
+              className="mt-3 w-full rounded-md border border-line px-3 py-2 text-xs font-semibold text-slate-500"
+              disabled
+              type="button"
+            >
+              Combine with matching section first
+            </button>
+          )}
         </div>
         <div className="preview-question-list overflow-auto p-2">
           {questions.map((question) => (

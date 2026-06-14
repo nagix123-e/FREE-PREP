@@ -25,6 +25,18 @@ export function TestSetupPage() {
     if (!selectedSetId) {
       return;
     }
+    if (set?.packageType !== "full_test" && course === "all") {
+      setDbError("Combine this section package with a matching section before starting a full test.");
+      return;
+    }
+    if (set?.packageType === "rw_section" && course === "math") {
+      setDbError("This package only contains RW questions.");
+      return;
+    }
+    if (set?.packageType === "math_section" && course === "rw") {
+      setDbError("This package only contains Math questions.");
+      return;
+    }
     try {
       const attempt = await startAttempt(selectedSetId, course);
       setDbError(null);
@@ -60,7 +72,11 @@ export function TestSetupPage() {
 
         <div className="mt-6 rounded-md border border-line bg-slate-50 p-4">
           <div className="csv-name-wrap text-sm font-semibold">{set?.name ?? "Selected Question Set"}</div>
-          <div className="mt-1 text-sm text-muted">{set?.totalQuestions ?? 98} questions</div>
+          <div className="mt-1 text-sm text-muted">
+            {set?.totalQuestions ?? 98} questions
+            {set?.packageType === "rw_section" ? " · RW Section Package" : ""}
+            {set?.packageType === "math_section" ? " · Math Section Package" : ""}
+          </div>
         </div>
 
         {error ? (
@@ -71,17 +87,17 @@ export function TestSetupPage() {
 
         <div className="mt-6 flex flex-col gap-3 sm:w-80">
           <PracticeStartButton
-            disabled={loading}
+            disabled={loading || set?.packageType !== "full_test"}
             label={loading ? "Starting..." : "Start Full Hard Practice Test"}
             onClick={() => void handleStart("all")}
           />
           <PracticeStartButton
-            disabled={loading}
+            disabled={loading || set?.packageType === "math_section"}
             label="Start RW Only Full Hard Practice Test"
             onClick={() => void handleStart("rw")}
           />
           <PracticeStartButton
-            disabled={loading}
+            disabled={loading || set?.packageType === "rw_section"}
             label="Start Math Only Full Hard Practice Test"
             onClick={() => void handleStart("math")}
           />
