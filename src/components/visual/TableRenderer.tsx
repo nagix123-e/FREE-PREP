@@ -7,7 +7,8 @@ export function TableRenderer({
   data: Record<string, unknown>;
   tableMarkdown?: string;
 }) {
-  const parsedMarkdown = tableMarkdown ? parseMarkdownTable(tableMarkdown) : null;
+  const normalizedMarkdown = normalizeTableMarkdown(tableMarkdown);
+  const parsedMarkdown = normalizedMarkdown ? parseMarkdownTable(normalizedMarkdown) : null;
   const headers = parsedMarkdown?.headers ?? getStringList(data.headers);
   const rows = parsedMarkdown?.rows ?? parseJsonRows(data.rows, headers);
 
@@ -43,6 +44,10 @@ export function TableRenderer({
       </table>
     </div>
   );
+}
+
+export function normalizeTableMarkdown(value?: string): string {
+  return String(value || "").replace(/\\n/g, "\n").trim();
 }
 
 function parseMarkdownTable(markdown: string): { headers: string[]; rows: string[][] } | null {

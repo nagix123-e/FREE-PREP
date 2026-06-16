@@ -99,14 +99,6 @@ export function ReviewAnswersPage() {
   const skills = unique(result?.gradedQuestions.map((item) => item.question.skillGroup) ?? []);
   const topics = unique(result?.gradedQuestions.map((item) => item.question.questionTopic || "Unspecified") ?? []);
 
-  async function handleRetry() {
-    if (!current || !selectedAttemptId || !current.question.id) {
-      return;
-    }
-    await saveResponse(makeResponse(current, selectedAttemptId, "", false));
-    setResult(await getScoreResult(selectedAttemptId));
-  }
-
   async function handleAddToReviewList() {
     if (!current || !selectedAttemptId || !current.question.id) {
       return;
@@ -183,17 +175,8 @@ export function ReviewAnswersPage() {
           Previous
         </button>
         <div className="flex gap-3">
-          <button className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => void handleRetry()} type="button">
-            Retry This Question
-          </button>
           <button className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => void handleAddToReviewList()} type="button">
             Add To Review List
-          </button>
-          <button className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => {
-            setBaseFilter("incorrect");
-            setIndex(0);
-          }} type="button">
-            Retry as mini practice
           </button>
         </div>
         <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300" disabled={index >= filtered.length - 1} onClick={() => setIndex(Math.min(filtered.length - 1, index + 1))} type="button">

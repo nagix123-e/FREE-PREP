@@ -263,11 +263,11 @@ textarea:focus-visible {
 
 .score-history-table-wrap {
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .score-history-table {
-  min-width: 0;
+  min-width: 1180px;
 }
 
 .score-history-table th,
@@ -276,43 +276,48 @@ textarea:focus-visible {
 }
 
 .score-history-col-date {
-  width: 8%;
+  width: 9%;
 }
 
 .score-history-col-set {
-  width: 13%;
+  width: 14%;
 }
 
 .score-history-col-mode {
-  width: 13%;
+  width: 14%;
 }
 
 .score-history-col-score {
-  width: 6.5%;
+  width: 8.5%;
 }
 
 .score-history-col-small {
-  width: 7.5%;
-}
-
-.score-history-col-status {
   width: 8%;
 }
 
+.score-history-col-status {
+  width: 9%;
+}
+
 .score-history-col-actions {
-  width: 22.5%;
+  width: 12.5%;
 }
 
 .score-history-breakable,
-.score-history-table th,
 .score-history-table td {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
+.score-history-table th {
+  overflow-wrap: normal;
+  white-space: normal;
+  word-break: normal;
+}
+
 .score-history-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
   justify-items: stretch;
 }

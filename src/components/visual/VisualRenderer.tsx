@@ -2,7 +2,7 @@ import type { VisualType } from "../../types";
 import { validateVisualData } from "../../services/visualValidationService";
 import { TableRenderer } from "./TableRenderer";
 import { RendererFactory } from "./RendererFactory";
-import { VisualErrorFallback } from "./VisualErrorFallback";
+import { VisualUnavailableFallback } from "./VisualErrorFallback";
 
 export function VisualRenderer({
   fallbackEquationText,
@@ -27,10 +27,12 @@ export function VisualRenderer({
       return null;
     }
     if (validation.status === "unsupported") {
-      return <VisualErrorFallback message="Unsupported visual type" />;
+      logVisualIssue("Unsupported visual type", { visualType: type, visualJson });
+      return <VisualUnavailableFallback />;
     }
     if (validation.status === "invalid" || !validation.type || !validation.data) {
-      return <VisualErrorFallback message="Visual data invalid" />;
+      logVisualIssue("Invalid visual data", { visualType: type, visualJson });
+      return <VisualUnavailableFallback />;
     }
     const data =
       validation.type === "function_graph"
@@ -44,8 +46,9 @@ export function VisualRenderer({
         visualType={validation.type}
       />
     );
-  } catch {
-    return <VisualErrorFallback message="Failed to render visual" />;
+  } catch (error) {
+    logVisualIssue("Failed to render visual", { error, visualType, visualJson });
+    return <VisualUnavailableFallback />;
   }
 }
 
@@ -65,4 +68,11 @@ function extractEquation(text: string): string {
   const compact = text.replace(/\s+/g, "");
   const match = compact.match(/(?:f\(x\)|y)=([^,.;?]+)/i);
   return match ? `y=${match[1]}` : "";
+}
+
+function logVisualIssue(message: string, detail: unknown) {
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  if (host === "localhost" || host === "127.0.0.1") {
+    console.warn(message, detail);
+  }
 }
