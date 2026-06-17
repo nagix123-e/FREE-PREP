@@ -6,9 +6,9 @@ export type ScoreTrendMode = "total" | "rw" | "math" | "all";
 
 export interface ScoreTrendPoint {
   label: string;
-  total: number;
-  rw: number;
-  math: number;
+  total: number | null;
+  rw: number | null;
+  math: number | null;
 }
 
 export interface CategoryTrendPoint {
@@ -31,9 +31,9 @@ export async function getScoreTrend(filter: TrendFilter): Promise<ScoreTrendPoin
     .reverse();
   return attempts.map((attempt) => ({
     label: formatDate(attempt.completedAt ?? attempt.startedAt),
-    total: attempt.practiceScore ?? 0,
-    rw: attempt.rwScore ?? 0,
-    math: attempt.mathScore ?? 0
+    total: attempt.practiceScore,
+    rw: attempt.rwScore,
+    math: attempt.mathScore
   }));
 }
 

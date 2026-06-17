@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CategoryTrendChart } from "./charts/CategoryTrendChart";
 import { SimpleLineChart } from "./charts/SimpleLineChart";
+import type { LineSeries } from "./charts/SimpleLineChart";
 import { getDashboardSummary } from "../services/dashboardService";
 import { buildRecommendedPractice } from "../services/recommendationService";
 import {
@@ -134,8 +135,8 @@ export function DashboardPage() {
   );
 }
 
-function buildScoreSeries(points: ScoreTrendPoint[], mode: ScoreTrendMode) {
-  const series = [];
+function buildScoreSeries(points: ScoreTrendPoint[], mode: ScoreTrendMode): LineSeries[] {
+  const series: LineSeries[] = [];
   if (mode === "total" || mode === "all") {
     series.push({ key: "total", label: "Total Practice Score", color: "#0f766e", values: points.map((point) => point.total) });
   }

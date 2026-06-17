@@ -335,6 +335,7 @@ export type RouteKey =
   | "result"
   | "reviewAnswers"
   | "history"
+  | "achievements"
   | "dashboard"
   | "mistakePractice"
   | "reviewList"

@@ -20,6 +20,13 @@ interface TriangleGeometry {
   vertices: VertexPoint[];
 }
 
+interface SvgBox {
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+}
+
 const DEFAULT_TRIANGLE_POINTS: Record<string, SvgPoint> = {
   A: { x: 120, y: 220 },
   B: { x: 400, y: 220 },
@@ -116,10 +123,12 @@ function SimilarTrianglesDiagram({ data }: { data: Record<string, unknown> }) {
   }
 
   const correspondence = readLabelMap(data.correspondence);
-  const firstGeometry = getTriangleGeometry(triangles[0], "triangle", { x: -64, y: 8 }, 0.72);
-  const secondGeometry = getTriangleGeometry(triangles[1], "triangle", { x: 172, y: 8 }, 0.72);
-  const firstVertices = firstGeometry.vertices;
-  const secondVertices = secondGeometry.vertices;
+  const firstGeometry = getTriangleGeometry(triangles[0], "triangle");
+  const secondGeometry = getTriangleGeometry(triangles[1], "triangle");
+  const firstBox: SvgBox = { xMin: 48, xMax: 230, yMin: 72, yMax: 218 };
+  const secondBox: SvgBox = { xMin: 292, xMax: 474, yMin: 72, yMax: 218 };
+  const firstVertices = fitVerticesToBox(firstGeometry.vertices, firstBox);
+  const secondVertices = fitVerticesToBox(secondGeometry.vertices, secondBox);
   const scaleNote = getScaleNote(data, bestMode(firstGeometry.mode, secondGeometry.mode));
 
   return (
@@ -128,10 +137,10 @@ function SimilarTrianglesDiagram({ data }: { data: Record<string, unknown> }) {
       <TriangleShape vertices={secondVertices} />
       <TriangleLabels data={triangles[0]} vertices={firstVertices} />
       <TriangleLabels data={triangles[1]} vertices={secondVertices} />
-      <text className="fill-slate-700 text-xs font-semibold" textAnchor="middle" x="160" y="250">
+      <text className="fill-slate-700 text-xs font-semibold" textAnchor="middle" x={boxCenterX(firstBox)} y="250">
         {asString(triangles[0].name) || firstVertices.map((vertex) => vertex.key).join("")}
       </text>
-      <text className="fill-slate-700 text-xs font-semibold" textAnchor="middle" x="396" y="250">
+      <text className="fill-slate-700 text-xs font-semibold" textAnchor="middle" x={boxCenterX(secondBox)} y="250">
         {asString(triangles[1].name) || secondVertices.map((vertex) => vertex.key).join("")}
       </text>
       {correspondence ? (
@@ -215,6 +224,40 @@ function buildGeometrySummary(data: Record<string, unknown>): string {
 
 function formatCorrespondence(correspondence: LabelMap): string {
   return Object.entries(correspondence).map(([from, to]) => `${from}↔${to}`).join(", ");
+}
+
+function fitVerticesToBox(vertices: VertexPoint[], box: SvgBox): VertexPoint[] {
+  const bounds = getVertexBounds(vertices);
+  const width = Math.max(1, bounds.xMax - bounds.xMin);
+  const height = Math.max(1, bounds.yMax - bounds.yMin);
+  const targetWidth = Math.max(1, box.xMax - box.xMin);
+  const targetHeight = Math.max(1, box.yMax - box.yMin);
+  const scale = Math.min(targetWidth / width, targetHeight / height);
+  const scaledWidth = width * scale;
+  const scaledHeight = height * scale;
+  const offsetX = box.xMin + (targetWidth - scaledWidth) / 2 - bounds.xMin * scale;
+  const offsetY = box.yMin + (targetHeight - scaledHeight) / 2 - bounds.yMin * scale;
+
+  return vertices.map((vertex) => ({
+    ...vertex,
+    x: vertex.x * scale + offsetX,
+    y: vertex.y * scale + offsetY
+  }));
+}
+
+function getVertexBounds(vertices: VertexPoint[]): SvgBox {
+  const xs = vertices.map((vertex) => vertex.x);
+  const ys = vertices.map((vertex) => vertex.y);
+  return {
+    xMin: Math.min(...xs),
+    xMax: Math.max(...xs),
+    yMin: Math.min(...ys),
+    yMax: Math.max(...ys)
+  };
+}
+
+function boxCenterX(box: SvgBox): number {
+  return (box.xMin + box.xMax) / 2;
 }
 
 function getTriangleGeometry(

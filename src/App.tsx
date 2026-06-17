@@ -9,6 +9,7 @@ import { ResultPage } from "./components/ResultPage";
 import { ReviewAnswersPage } from "./components/ReviewAnswersPage";
 import { ReviewListPage } from "./components/ReviewListPage";
 import { ScoreHistoryPage } from "./components/ScoreHistoryPage";
+import { AchievementsPage } from "./components/AchievementsPage";
 import { SectionBreakPage } from "./components/SectionBreakPage";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { TestRunnerPage } from "./components/TestRunnerPage";
@@ -30,6 +31,7 @@ const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
   { route: "import", label: "Import CSV" },
   { route: "sets", label: "Question Sets" },
   { route: "history", label: "Score History" },
+  { route: "achievements", label: "Achievements" },
   { route: "mistakePractice", label: "Mistake Practice" },
   { route: "reviewList", label: "Review List" },
   { route: "statistics", label: "Statistics" },
@@ -137,6 +139,7 @@ export default function App() {
             {route === "result" ? <ResultPage /> : null}
             {route === "reviewAnswers" ? <ReviewAnswersPage /> : null}
             {route === "history" ? <ScoreHistoryPage /> : null}
+            {route === "achievements" ? <AchievementsPage /> : null}
             {route === "mistakePractice" ? <PracticeSetupPage mode="mistake_practice" /> : null}
             {route === "reviewListPractice" ? <PracticeSetupPage mode="review_list_practice" /> : null}
             {route === "reviewList" ? <ReviewListPage /> : null}
@@ -166,6 +169,7 @@ function titleForRoute(route: RouteKey): string {
     result: "Result",
     reviewAnswers: "Review Answers",
     history: "Score History",
+    achievements: "Achievements",
     mistakePractice: "Mistake Practice",
     reviewList: "Review List",
     reviewListPractice: "Review List Practice",
