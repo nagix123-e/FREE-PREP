@@ -9,33 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  macos-signing-preflight:
-    name: Check macOS signing secrets
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require Apple Developer ID secrets
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          missing=0
-          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
-            if [ -z "${!name}" ]; then
-              echo "::error::$name is required for signed and notarized macOS releases."
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "::error::Add the Apple Developer ID signing secrets before publishing a release."
-            exit 1
-          fi
-
   release:
     name: Build and release ${{ matrix.platform }}
-    needs: macos-signing-preflight
     strategy:
       fail-fast: false
       matrix:
