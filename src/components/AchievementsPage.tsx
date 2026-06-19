@@ -159,7 +159,9 @@ export function AchievementsPage() {
             >
               ×
             </button>
-            <AchievementCard enlarged item={selectedAchievement} />
+            <div className="achievement-card-modal-wrap">
+              <AchievementCard enlarged item={selectedAchievement} />
+            </div>
             <AchievementShareWidget item={selectedAchievement} />
           </div>
         </div>
@@ -338,6 +340,7 @@ function ShareButton({
 function buildAchievementGroups(attempts: AttemptSummary[]): AchievementGroups {
   const completed = attempts
     .filter((attempt) => attempt.status === "completed")
+    .filter((attempt) => !isFocusedPracticeAttempt(attempt.mode))
     .sort((a, b) => getAttemptTime(b) - getAttemptTime(a));
 
   return {
@@ -345,6 +348,10 @@ function buildAchievementGroups(attempts: AttemptSummary[]): AchievementGroups {
     RW: completed.flatMap((attempt) => makeAchievementItem(attempt, "RW")),
     Math: completed.flatMap((attempt) => makeAchievementItem(attempt, "Math"))
   };
+}
+
+function isFocusedPracticeAttempt(mode: AttemptSummary["mode"]): boolean {
+  return mode === "domain_practice" || mode === "mistake_practice" || mode === "review_list_practice";
 }
 
 function makeAchievementItem(attempt: AttemptSummary, category: AchievementCategory): AchievementItem[] {

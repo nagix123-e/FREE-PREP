@@ -33,6 +33,7 @@ const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
   { route: "history", label: "Score History" },
   { route: "achievements", label: "Achievements" },
   { route: "mistakePractice", label: "Mistake Practice" },
+  { route: "domainPractice", label: "Domain Practice" },
   { route: "reviewList", label: "Review List" },
   { route: "statistics", label: "Statistics" },
   { route: "settings", label: "Settings" }
@@ -141,6 +142,7 @@ export default function App() {
             {route === "history" ? <ScoreHistoryPage /> : null}
             {route === "achievements" ? <AchievementsPage /> : null}
             {route === "mistakePractice" ? <PracticeSetupPage mode="mistake_practice" /> : null}
+            {route === "domainPractice" ? <PracticeSetupPage mode="domain_practice" /> : null}
             {route === "reviewListPractice" ? <PracticeSetupPage mode="review_list_practice" /> : null}
             {route === "reviewList" ? <ReviewListPage /> : null}
             {route === "statistics" ? <StatisticsPage /> : null}
@@ -171,6 +173,7 @@ function titleForRoute(route: RouteKey): string {
     history: "Score History",
     achievements: "Achievements",
     mistakePractice: "Mistake Practice",
+    domainPractice: "Domain Practice",
     reviewList: "Review List",
     reviewListPractice: "Review List Practice",
     statistics: "Statistics",

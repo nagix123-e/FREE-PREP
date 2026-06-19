@@ -1,11 +1,16 @@
 import { createSqliteIntegerId, getDatabase, listQuestions } from "../lib/database";
-import type { Question } from "../types";
+import type { Question, Section } from "../types";
+import { gradeAttempt } from "./scoringService";
 
-export type PracticeMode = "mistake_practice" | "review_list_practice";
+export type PracticeMode = "mistake_practice" | "domain_practice" | "review_list_practice";
+export type DomainPracticeScope = "full" | "rw" | "math";
 
 export interface PracticeConfig {
   questionSetId: number;
+  questionSetIds?: number[];
   mode: PracticeMode;
+  domain?: string;
+  domainScopes?: DomainPracticeScope[];
   questionCount: number;
   randomize: boolean;
   timerEnabled: boolean;
@@ -17,6 +22,9 @@ export async function buildPracticeQuestions(config: PracticeConfig): Promise<Qu
   }
   if (config.mode === "review_list_practice") {
     return getReviewListQuestions(config);
+  }
+  if (config.mode === "domain_practice") {
+    return getDomainQuestions(config);
   }
   return [];
 }
@@ -30,13 +38,51 @@ export async function createPracticeAttempt(config: PracticeConfig): Promise<num
     ) VALUES ($1, $2, $3, 'in_progress', $4, 0, $5)`,
     [
       attemptId,
-      config.questionSetId,
+      getPrimaryQuestionSetId(config),
       config.mode,
       new Date().toISOString(),
       config.timerEnabled ? config.questionCount * 90 : null
     ]
   );
   return attemptId;
+}
+
+export async function updatePracticeAttemptProgress(input: {
+  attemptId: number;
+  questionIndex: number;
+  remainingTimeSec: number | null;
+  status?: "in_progress" | "paused";
+}): Promise<void> {
+  const db = await getDatabase();
+  await db.execute(
+    `UPDATE attempts
+     SET current_question_index = $1,
+         remaining_time_sec = $2,
+         status = COALESCE($3, status)
+     WHERE id = $4`,
+    [input.questionIndex, input.remainingTimeSec, input.status ?? null, input.attemptId]
+  );
+}
+
+export async function completePracticeAttempt(attemptId: number): Promise<void> {
+  await gradeAttempt(attemptId);
+}
+
+export async function countMistakeQuestions(questionSetId: number): Promise<number> {
+  if (!questionSetId) {
+    return 0;
+  }
+
+  const db = await getDatabase();
+  const rows = await db.select<Array<{ count: number }>>(
+    `SELECT COUNT(DISTINCT responses.question_id) AS count
+     FROM responses
+     JOIN questions ON questions.id = responses.question_id
+     WHERE questions.question_set_id = $1
+       AND responses.is_correct = 0`,
+    [questionSetId]
+  );
+  return rows[0]?.count ?? 0;
 }
 
 async function getMistakeQuestions(config: PracticeConfig): Promise<Question[]> {
@@ -69,6 +115,51 @@ async function getReviewListQuestions(config: PracticeConfig): Promise<Question[
   const ids = new Set(rows.map((row) => row.question_id));
   const questions = (await listQuestions(config.questionSetId)).filter((question) => question.id && ids.has(question.id));
   return limitQuestions(questions, config.questionCount, config.randomize);
+}
+
+async function getDomainQuestions(config: PracticeConfig): Promise<Question[]> {
+  const domain = config.domain?.trim();
+  if (!domain) {
+    throw new Error("Choose a content domain before starting practice.");
+  }
+
+  const questionSetIds = getQuestionSetIds(config);
+  const questionGroups = await Promise.all(questionSetIds.map((questionSetId) => listQuestions(questionSetId)));
+  const allowedSections = getDomainPracticeSections(config.domainScopes);
+  const questions = questionGroups
+    .flat()
+    .filter((question) => normalizeDomain(question.contentDomain || question.domain) === normalizeDomain(domain))
+    .filter((question) => allowedSections === null || allowedSections.includes(question.section));
+
+  return limitQuestions(questions, config.questionCount, config.randomize);
+}
+
+function getPrimaryQuestionSetId(config: PracticeConfig): number {
+  return getQuestionSetIds(config)[0] ?? config.questionSetId;
+}
+
+function getQuestionSetIds(config: PracticeConfig): number[] {
+  const ids = config.questionSetIds?.length ? config.questionSetIds : [config.questionSetId];
+  return [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))];
+}
+
+function normalizeDomain(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function getDomainPracticeSections(scopes: DomainPracticeScope[] | undefined): Section[] | null {
+  if (!scopes?.length || scopes.includes("full")) {
+    return null;
+  }
+
+  const sections: Section[] = [];
+  if (scopes.includes("rw")) {
+    sections.push("RW");
+  }
+  if (scopes.includes("math")) {
+    sections.push("MATH");
+  }
+  return sections.length > 0 ? sections : null;
 }
 
 function limitQuestions(questions: Question[], count: number, randomize: boolean): Question[] {

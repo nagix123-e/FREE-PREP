@@ -38,10 +38,17 @@ export function ResultPage() {
     return <div className="text-sm text-muted">Loading result...</div>;
   }
 
+  const domainPracticeSummary =
+    result.attemptMode === "domain_practice" ? buildDomainPracticeSummary(result) : null;
+  const focusedPracticeSummary =
+    result.attemptMode === "mistake_practice" ? buildFocusedPracticeSummary(result, "Mistake Practice Score") : null;
+  const practiceSummary = domainPracticeSummary ?? focusedPracticeSummary;
   const hasTotalScore = result.totalScore !== null;
   const hasRwScore = result.rwScore !== null;
   const hasMathScore = result.mathScore !== null;
-  const scoreTitle = hasTotalScore
+  const scoreTitle = practiceSummary
+    ? practiceSummary.label
+    : hasTotalScore
     ? "Total Practice Score"
     : hasRwScore
       ? "RW Practice Score"
@@ -55,7 +62,9 @@ export function ResultPage() {
             <h2 className="text-2xl font-semibold">{scoreTitle}</h2>
             <p className="mt-2 text-sm text-slate-600">
               Scores are estimates for practice only. They are not official SAT scores.
-              {!hasTotalScore
+              {practiceSummary
+                ? " This practice score is estimated from the questions in this session."
+                : !hasTotalScore
                 ? " Complete the other section later to combine this with an estimated full practice score."
                 : ""}
             </p>
@@ -85,13 +94,20 @@ export function ResultPage() {
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {hasTotalScore ? (
+          {practiceSummary ? (
+            <ScoreSummaryCard
+              label={practiceSummary.label}
+              range={practiceSummary.range}
+              score={practiceSummary.scoreText}
+            />
+          ) : null}
+          {!practiceSummary && hasTotalScore ? (
             <ScoreSummaryCard label="Total Practice Score" range="400-1600" score={result.totalScore} />
           ) : null}
-          {hasRwScore ? (
+          {!practiceSummary && hasRwScore ? (
             <ScoreSummaryCard label="RW Practice Score" range="200-800" score={result.rwScore} />
           ) : null}
-          {hasMathScore ? (
+          {!practiceSummary && hasMathScore ? (
             <ScoreSummaryCard label="Math Practice Score" range="200-800" score={result.mathScore} />
           ) : null}
         </div>
@@ -113,6 +129,56 @@ export function ResultPage() {
       <BreakdownTable labelHeader="Visual Type" rows={result.visualBreakdown} title="Visual Type Breakdown" />
     </div>
   );
+}
+
+function buildDomainPracticeSummary(result: ScoreResult): {
+  label: string;
+  scoreText: string;
+  range: string;
+} {
+  const domainName =
+    result.gradedQuestions.find((item) => (item.question.contentDomain || item.question.domain).trim())
+      ?.question.contentDomain ||
+    result.gradedQuestions.find((item) => item.question.domain.trim())?.question.domain ||
+    "Domain";
+  const weightedCorrect = result.gradedQuestions.reduce(
+    (sum, item) => sum + (item.isCorrect ? item.weight : 0),
+    0
+  );
+  const weightedTotal = result.gradedQuestions.reduce((sum, item) => sum + item.weight, 0);
+  const score = formatPracticePoints(weightedCorrect);
+  const maxScore = formatPracticePoints(weightedTotal);
+
+  return {
+    label: `${domainName} Practice Score`,
+    scoreText: `${score} / ${maxScore}`,
+    range: `Estimated max from ${result.gradedQuestions.length} questions`
+  };
+}
+
+function buildFocusedPracticeSummary(
+  result: ScoreResult,
+  label: string
+): {
+  label: string;
+  scoreText: string;
+  range: string;
+} {
+  const weightedCorrect = result.gradedQuestions.reduce(
+    (sum, item) => sum + (item.isCorrect ? item.weight : 0),
+    0
+  );
+  const weightedTotal = result.gradedQuestions.reduce((sum, item) => sum + item.weight, 0);
+
+  return {
+    label,
+    scoreText: `${formatPracticePoints(weightedCorrect)} / ${formatPracticePoints(weightedTotal)}`,
+    range: `Estimated max from ${result.gradedQuestions.length} questions`
+  };
+}
+
+function formatPracticePoints(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1).replace(/\.0$/, "");
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

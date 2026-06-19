@@ -17,6 +17,7 @@ interface TestSessionState {
   moduleIndex: number;
   questionIndex: number;
   remainingTimeSec: number;
+  activeQuestionStartedAtMs: number;
   timerHidden: boolean;
   loading: boolean;
   error: string | null;
@@ -43,6 +44,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
   moduleIndex: 0,
   questionIndex: 0,
   remainingTimeSec: getModuleDurationSec(0),
+  activeQuestionStartedAtMs: Date.now(),
   timerHidden: false,
   loading: false,
   error: null,
@@ -59,6 +61,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
         moduleIndex,
         questionIndex: 0,
         remainingTimeSec: attempt.remainingTimeSec ?? getModuleDurationSec(moduleIndex),
+        activeQuestionStartedAtMs: Date.now(),
         timerHidden: false,
         loading: false
       });
@@ -86,6 +89,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
         moduleIndex,
         questionIndex: attempt.currentQuestionIndex,
         remainingTimeSec: attempt.remainingTimeSec ?? getModuleDurationSec(moduleIndex),
+        activeQuestionStartedAtMs: Date.now(),
         timerHidden: false,
         loading: false
       });
@@ -105,7 +109,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
 
   setQuestionIndex: async (questionIndex) => {
     const { attempt, moduleIndex, remainingTimeSec } = get();
-    set({ questionIndex });
+    set({ questionIndex, activeQuestionStartedAtMs: Date.now() });
     if (attempt) {
       await saveAttemptPosition({
         attemptId: attempt.id,
@@ -219,7 +223,8 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
     set({
       moduleIndex: nextModuleIndex,
       questionIndex: 0,
-      remainingTimeSec: nextRemaining
+      remainingTimeSec: nextRemaining,
+      activeQuestionStartedAtMs: Date.now()
     });
     await saveAttemptPosition({
       attemptId: attempt.id,
@@ -277,11 +282,18 @@ async function persistResponse(
   set: (partial: Partial<TestSessionState>) => void,
   get: () => TestSessionState
 ): Promise<void> {
-  await saveResponse(response);
+  const now = Date.now();
+  const elapsedSec = Math.max(0, Math.round((now - get().activeQuestionStartedAtMs) / 1000));
+  const responseWithTime = {
+    ...response,
+    timeSpentSec: response.timeSpentSec + elapsedSec
+  };
+  await saveResponse(responseWithTime);
   set({
+    activeQuestionStartedAtMs: now,
     responsesByQuestionId: {
       ...get().responsesByQuestionId,
-      [response.questionId]: response
+      [response.questionId]: responseWithTime
     }
   });
 }

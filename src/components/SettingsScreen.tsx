@@ -37,7 +37,6 @@ export function SettingsScreen() {
       <div className="mt-6 grid grid-cols-2 gap-4">
         <DropdownSelect label="Timer" value={settings.timerDefaultVisible ? "show" : "hide"} onChange={(value) => setSettings({ ...settings, timerDefaultVisible: value === "show" })} options={SHOW_HIDE_OPTIONS} />
         <DropdownSelect label="Default Practice Length" value={settings.defaultPracticeLength.toString()} onChange={(value) => setSettings({ ...settings, defaultPracticeLength: Number(value) })} options={PRACTICE_LENGTH_OPTIONS} />
-        <DropdownSelect label="Auto Save" value={settings.autoSave ? "on" : "off"} onChange={(value) => setSettings({ ...settings, autoSave: value === "on" })} options={ON_OFF_OPTIONS} />
       </div>
       <button className="mt-6 rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white" onClick={() => void handleSave()} type="button">
         Save Settings
@@ -65,11 +64,6 @@ function formatError(error: unknown, fallback: string): string {
 const SHOW_HIDE_OPTIONS: DropdownOption[] = [
   { value: "show", label: "Show" },
   { value: "hide", label: "Hide" }
-];
-
-const ON_OFF_OPTIONS: DropdownOption[] = [
-  { value: "on", label: "On" },
-  { value: "off", label: "Off" }
 ];
 
 const PRACTICE_LENGTH_OPTIONS: DropdownOption[] = [10, 20, 30, 50, 100].map((value) => ({

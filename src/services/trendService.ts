@@ -43,6 +43,7 @@ export async function getCategoryTrend(
 ): Promise<CategoryTrendPoint[]> {
   const attempts = filterAttempts(await listAttemptHistory(), filter)
     .filter((attempt) => attempt.status === "completed")
+    .filter((attempt) => !attempt.archived)
     .reverse();
   const results = await Promise.all(attempts.map((attempt) => getScoreResult(attempt.id)));
   return results.flatMap((result, index) =>
@@ -61,7 +62,10 @@ export async function getCategoryTrend(
 }
 
 export async function getWeaknessTrend(): Promise<WeaknessTrend> {
-  const attempts = (await listAttemptHistory()).filter((attempt) => attempt.status === "completed").slice(0, 6);
+  const attempts = (await listAttemptHistory())
+    .filter((attempt) => attempt.status === "completed")
+    .filter((attempt) => !attempt.archived)
+    .slice(0, 6);
   const results = await Promise.all(attempts.map((attempt) => getScoreResult(attempt.id)));
   const latest = results.slice(0, 3).flatMap((result) => [...result.domainBreakdown, ...result.skillBreakdown]);
   const previous = results.slice(3, 6).flatMap((result) => [...result.domainBreakdown, ...result.skillBreakdown]);

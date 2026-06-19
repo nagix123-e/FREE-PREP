@@ -4,7 +4,7 @@ export function ScoreSummaryCard({
   range
 }: {
   label: string;
-  score: number | null;
+  score: number | string | null;
   range: string;
 }) {
   return (

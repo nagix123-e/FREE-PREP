@@ -5,7 +5,9 @@ export function TestNavigation({
   onNext,
   onOpenMenu,
   onReview,
-  submitMode = false
+  submitMode = false,
+  reviewLabel = "Review Module",
+  submitLabel = "Submit Scores"
 }: {
   canGoBack: boolean;
   canGoNext: boolean;
@@ -14,6 +16,8 @@ export function TestNavigation({
   onOpenMenu: () => void;
   onReview: () => void;
   submitMode?: boolean;
+  reviewLabel?: string;
+  submitLabel?: string;
 }) {
   const primaryAction = submitMode ? onReview : onNext;
 
@@ -40,7 +44,7 @@ export function TestNavigation({
           onClick={onReview}
           type="button"
         >
-          Review Module
+          {reviewLabel}
         </button>
       </div>
       <button
@@ -49,7 +53,7 @@ export function TestNavigation({
         onClick={primaryAction}
         type="button"
       >
-        {submitMode ? "Submit Scores" : "Next"}
+        {submitMode ? submitLabel : "Next"}
       </button>
     </footer>
   );

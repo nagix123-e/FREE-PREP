@@ -14,7 +14,9 @@ export interface StatisticsSummary {
 }
 
 export async function getStatisticsSummary(): Promise<StatisticsSummary> {
-  const attempts = (await listAttemptHistory()).filter((attempt) => attempt.status === "completed");
+  const attempts = (await listAttemptHistory()).filter(
+    (attempt) => attempt.status === "completed" && !attempt.archived
+  );
   const results = await Promise.all(attempts.map((attempt) => getScoreResult(attempt.id)));
   const graded = results.flatMap((result) => result.gradedQuestions);
   const correctItems = graded.filter((item) => item.isCorrect && (item.response?.timeSpentSec ?? 0) > 0);

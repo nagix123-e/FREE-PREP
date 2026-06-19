@@ -126,6 +126,15 @@ export function parseCsvFile(file: File): Promise<ValidationSummary> {
   });
 }
 
+export function parseCsvText(csvText: string): ValidationSummary {
+  const result = Papa.parse<Record<string, string>>(csvText, {
+    header: true,
+    skipEmptyLines: "greedy",
+    transform: (value) => value.trim()
+  });
+  return validateParseResult(result);
+}
+
 export function validateParseResult(result: ParseResult<Record<string, string>>): ValidationSummary {
   const issues: ValidationIssue[] = [];
   const fields = result.meta.fields ?? [];

@@ -5,7 +5,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   language: "en",
   theme: "system",
   timerDefaultVisible: true,
-  autoSave: true,
   defaultPracticeLength: 20,
   fullscreenTestMode: false
 };

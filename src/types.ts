@@ -25,6 +25,7 @@ export type AttemptMode =
   | "full_hard_rw_practice"
   | "full_hard_math_practice"
   | "mistake_practice"
+  | "domain_practice"
   | "review_list_practice";
 
 export const REQUIRED_HEADERS = [
@@ -196,7 +197,6 @@ export interface AppSettings {
   language: "en" | "ja";
   theme: "light" | "dark" | "system";
   timerDefaultVisible: boolean;
-  autoSave: boolean;
   defaultPracticeLength: number;
   fullscreenTestMode: boolean;
 }
@@ -250,6 +250,7 @@ export interface AttemptSummary extends Attempt {
   questionSetName: string;
   accuracy: number;
   durationSec: number;
+  archived?: boolean;
 }
 
 export interface GradedQuestion {
@@ -275,6 +276,7 @@ export interface BreakdownRow {
 
 export interface ScoreResult {
   attemptId: number;
+  attemptMode: AttemptMode;
   totalScore: number | null;
   rwScore: number | null;
   mathScore: number | null;
@@ -338,6 +340,7 @@ export type RouteKey =
   | "achievements"
   | "dashboard"
   | "mistakePractice"
+  | "domainPractice"
   | "reviewList"
   | "reviewListPractice"
   | "statistics"

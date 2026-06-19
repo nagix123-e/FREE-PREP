@@ -305,10 +305,13 @@ function getDefaultGeometry(
     return { mode: "exact_to_scale", points: exactRight };
   }
 
-  const proportional = sideLabels ? buildProportionalTriangle(names, sideLabels) : null;
-  if (proportional) {
+  const proportionalSideLabels = sideLabels;
+  const proportional = proportionalSideLabels
+    ? buildProportionalTriangle(names, proportionalSideLabels)
+    : null;
+  if (proportional && proportionalSideLabels) {
     return {
-      mode: countNumericSides(names, sideLabels) >= 3 ? "exact_to_scale" : "near_to_scale",
+      mode: countNumericSides(names, proportionalSideLabels) >= 3 ? "exact_to_scale" : "near_to_scale",
       points: proportional
     };
   }

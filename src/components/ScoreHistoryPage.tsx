@@ -78,32 +78,40 @@ export function ScoreHistoryPage() {
                   <td className="csv-name-cell px-5 py-3 font-medium">
                     <span className="csv-name-wrap">{attempt.questionSetName}</span>
                   </td>
-                  <td className="score-history-breakable px-5 py-3">{attempt.mode}</td>
-                  <td className="px-5 py-3">{attempt.practiceScore ?? "-"}</td>
-                  <td className="px-5 py-3">{attempt.rwScore ?? "-"}</td>
-                  <td className="px-5 py-3">{attempt.mathScore ?? "-"}</td>
+                  <td className="score-history-breakable px-5 py-3">{formatAttemptMode(attempt.mode)}</td>
+                  <td className="px-5 py-3">{shouldHideSatScores(attempt) ? "-" : attempt.practiceScore ?? "-"}</td>
+                  <td className="px-5 py-3">{shouldHideSatScores(attempt) ? "-" : attempt.rwScore ?? "-"}</td>
+                  <td className="px-5 py-3">{shouldHideSatScores(attempt) ? "-" : attempt.mathScore ?? "-"}</td>
                   <td className="px-5 py-3">{attempt.accuracy}%</td>
                   <td className="px-5 py-3">{formatDuration(attempt.durationSec)}</td>
-                  <td className="score-history-breakable px-5 py-3">{attempt.status}</td>
+                  <td className="score-history-breakable px-5 py-3">
+                    {attempt.archived ? "score only" : attempt.status}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="score-history-actions">
-                      <button
-                        className="score-history-action-button rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
-                        onClick={() => navigate("result", attempt.questionSetId, attempt.id)}
-                        type="button"
-                      >
-                        Open Result
-                      </button>
-                      <button
-                        className="score-history-action-button rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
-                        onClick={() => {
-                          setReviewFilterPreset("incorrect");
-                          navigate("reviewAnswers", attempt.questionSetId, attempt.id);
-                        }}
-                        type="button"
-                      >
-                        Review Mistakes
-                      </button>
+                      {!attempt.archived ? (
+                        <>
+                          <button
+                            className="score-history-action-button rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+                            onClick={() => navigate("result", attempt.questionSetId, attempt.id)}
+                            type="button"
+                          >
+                            Open Result
+                          </button>
+                          <button
+                            className="score-history-action-button rounded-md border border-line px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+                            onClick={() => {
+                              setReviewFilterPreset("incorrect");
+                              navigate("reviewAnswers", attempt.questionSetId, attempt.id);
+                            }}
+                            type="button"
+                          >
+                            Review Mistakes
+                          </button>
+                        </>
+                      ) : (
+                        <span className="score-history-action-note">Details removed</span>
+                      )}
                       <button
                         className="delete-gradient-button score-history-action-button rounded-md px-3 py-2 text-xs font-semibold text-white"
                         onClick={() => void handleDelete(attempt.id)}
@@ -134,4 +142,17 @@ function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
+}
+
+function formatAttemptMode(mode: AttemptSummary["mode"]): string {
+  if (mode === "domain_practice") return "Practice: Domain";
+  if (mode === "mistake_practice") return "Practice: Mistakes";
+  if (mode === "review_list_practice") return "Practice: Review List";
+  if (mode === "full_hard_rw_practice") return "RW Practice Test";
+  if (mode === "full_hard_math_practice") return "Math Practice Test";
+  return "Full Hard Practice Test";
+}
+
+function shouldHideSatScores(attempt: AttemptSummary): boolean {
+  return attempt.mode === "domain_practice";
 }

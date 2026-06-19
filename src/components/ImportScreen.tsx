@@ -1,12 +1,20 @@
-import { useMemo, useState } from "react";
-import { getPackageTypeLabel, parseCsvFile } from "../lib/csvValidation";
+import { useEffect, useMemo, useState } from "react";
+import { getPackageTypeLabel, parseCsvFile, parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
+import {
+  getUnsavedSampleOptions,
+  listSampleSetOptions,
+  loadSampleCsv,
+  type SampleSetOption
+} from "../services/sampleSetService";
 import { useAppStore } from "../store/appStore";
-import type { ValidationSummary } from "../types";
+import { DropdownSelect } from "./ui/DropdownSelect";
+import type { ValidationIssue, ValidationSummary } from "../types";
 
 export function ImportScreen() {
-  const { navigate, setQuestionSets, setDbError } = useAppStore();
+  const { navigate, questionSets, setQuestionSets, setDbError } = useAppStore();
   const [fileName, setFileName] = useState("");
+  const [sourceFilename, setSourceFilename] = useState("");
   const [setName, setSetName] = useState("");
   const [description, setDescription] = useState("");
   const [summary, setSummary] = useState<ValidationSummary | null>(null);
@@ -15,6 +23,9 @@ export function ImportScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [nameTouched, setNameTouched] = useState(false);
+  const [sampleOptions, setSampleOptions] = useState<SampleSetOption[]>([]);
+  const [selectedSampleId, setSelectedSampleId] = useState("");
+  const [isLoadingSample, setIsLoadingSample] = useState(false);
 
   const nameError = nameTouched && !setName.trim() ? "Question set name is required." : null;
   const saveReadinessMessage = getSaveReadinessMessage({
@@ -42,6 +53,23 @@ export function ImportScreen() {
   );
   const expectedRowCount = getExpectedRowCount(summary);
   const rowCount = summary?.rowCount ?? 0;
+  const unsavedSampleOptions = useMemo(() => getUnsavedSampleOptions(sampleOptions), [sampleOptions]);
+  const selectedSample = unsavedSampleOptions.find((sample) => sample.id === selectedSampleId) ?? null;
+
+  useEffect(() => {
+    listSampleSetOptions(questionSets)
+      .then((options) => {
+        setSampleOptions(options);
+        const unsaved = getUnsavedSampleOptions(options);
+        setSelectedSampleId((current) =>
+          current && unsaved.some((sample) => sample.id === current) ? current : unsaved[0]?.id ?? ""
+        );
+      })
+      .catch(() => {
+        setSampleOptions([]);
+        setSelectedSampleId("");
+      });
+  }, [questionSets]);
 
   async function handleFile(file: File | null) {
     if (!file) {
@@ -50,6 +78,7 @@ export function ImportScreen() {
 
     setIsParsing(true);
     setFileName(file.name);
+    setSourceFilename(file.name);
     setSetName(file.name.replace(/\.csv$/i, ""));
     setNameTouched(false);
     setSummary(null);
@@ -64,6 +93,34 @@ export function ImportScreen() {
       setSummary(null);
     } finally {
       setIsParsing(false);
+    }
+  }
+
+  async function handleLoadSample() {
+    if (!selectedSample) {
+      return;
+    }
+
+    setIsLoadingSample(true);
+    setIsParsing(true);
+    setFileName(selectedSample.filename);
+    setSourceFilename(selectedSample.sourceFilename);
+    setSetName(selectedSample.name);
+    setDescription(selectedSample.description);
+    setNameTouched(false);
+    setSummary(null);
+    setSaveError(null);
+    setFileError(null);
+
+    try {
+      const csvText = await loadSampleCsv(selectedSample);
+      setSummary(requireFullTestSample(parseCsvText(csvText)));
+    } catch (error: unknown) {
+      setFileError(errorToMessage(error, "Could not load sample set."));
+      setSummary(null);
+    } finally {
+      setIsParsing(false);
+      setIsLoadingSample(false);
     }
   }
 
@@ -83,7 +140,7 @@ export function ImportScreen() {
         questions: summary.questions,
         status: summary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid",
         packageType: summary.packageType ?? undefined,
-        sourceFilename: fileName,
+        sourceFilename: sourceFilename || fileName,
         rowCount: summary.rowCount,
         sectionCounts: summary.sectionCounts
       });
@@ -131,6 +188,36 @@ export function ImportScreen() {
         ) : null}
 
         {isParsing ? <div className="mt-4 text-sm text-muted">Parsing CSV...</div> : null}
+
+        {unsavedSampleOptions.length > 0 ? (
+          <div className="mt-5 rounded-md border border-line bg-slate-50 p-4">
+            <div className="text-sm font-semibold">Import sample set</div>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="min-w-72 flex-1">
+                <DropdownSelect
+                  label="Sample full practice set"
+                  onChange={setSelectedSampleId}
+                  options={unsavedSampleOptions.map((sample) => ({
+                    label: sample.name,
+                    value: sample.id
+                  }))}
+                  value={selectedSampleId}
+                />
+              </div>
+              <button
+                className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                disabled={!selectedSample || isLoadingSample || isSaving || isParsing}
+                onClick={() => void handleLoadSample()}
+                type="button"
+              >
+                {isLoadingSample ? "Loading..." : "Import Sample Set"}
+              </button>
+            </div>
+            {selectedSample ? (
+              <p className="mt-2 text-xs text-muted">{selectedSample.description}</p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-6 grid grid-cols-2 gap-4">
           <label className="text-sm font-medium">
@@ -318,6 +405,23 @@ function getExpectedRowCount(summary: ValidationSummary | null): number {
   if (summary?.packageType === "math_section") return 44;
   if (summary?.packageType === "full_test") return 98;
   return 0;
+}
+
+function requireFullTestSample(summary: ValidationSummary): ValidationSummary {
+  if (summary.packageType === "full_test") {
+    return summary;
+  }
+
+  const issue: ValidationIssue = {
+    level: "error",
+    message: "Bundled sample sets must be full practice sets with 98 questions."
+  };
+
+  return {
+    ...summary,
+    valid: false,
+    issues: [...summary.issues, issue]
+  };
 }
 
 function errorToMessage(error: unknown, fallback: string): string {

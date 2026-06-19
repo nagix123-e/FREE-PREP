@@ -128,8 +128,10 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
   }
 
   const moduleIndexes = getModuleIndexesForAttemptMode(attempt.mode);
-  const questions = filterQuestionsForModules(await listQuestions(questionSetId), moduleIndexes);
   const responses = await loadResponses(attemptId);
+  const questions = isFocusedPracticeMode(attempt.mode)
+    ? await loadPracticeAttemptQuestions(attemptId)
+    : filterQuestionsForModules(await listQuestions(questionSetId), moduleIndexes);
   const responsesByQuestionId = new Map(responses.map((response) => [response.questionId, response]));
   const gradedQuestions = questions.map((question) =>
     gradeQuestion(question, responsesByQuestionId.get(question.id ?? -1) ?? null)
@@ -166,7 +168,7 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
   }
 
   const totalScore = rwScore !== null && mathScore !== null ? calculateTotalScore(rwScore, mathScore) : null;
-  const result = buildScoreResult(attemptId, gradedQuestions, rwScore, mathScore, totalScore, moduleIndexes);
+  const result = buildScoreResult(attemptId, attempt.mode, gradedQuestions, rwScore, mathScore, totalScore, moduleIndexes);
 
   await db.execute(
     `UPDATE attempts
@@ -216,6 +218,7 @@ function gradeQuestion(question: Question, response: ResponseRecord | null): Gra
 
 function buildScoreResult(
   attemptId: number,
+  attemptMode: AttemptMode,
   gradedQuestions: GradedQuestion[],
   rwScore: number | null,
   mathScore: number | null,
@@ -233,6 +236,7 @@ function buildScoreResult(
 
   return {
     attemptId,
+    attemptMode,
     totalScore,
     rwScore,
     mathScore,
@@ -251,6 +255,47 @@ function buildScoreResult(
       item.question.visualType === "none" ? "No Visual" : item.question.visualType
     )
   };
+}
+
+async function loadPracticeAttemptQuestions(attemptId: number): Promise<Question[]> {
+  const db = await getDatabase();
+  const rows = await db.select<Array<{ id: number }>>(
+    `SELECT questions.id
+     FROM responses
+     JOIN questions ON questions.id = responses.question_id
+     WHERE responses.attempt_id = $1
+     ORDER BY responses.id`,
+    [attemptId]
+  );
+  const orderedIds = rows.map((row) => row.id);
+  if (orderedIds.length === 0) {
+    return [];
+  }
+  const idOrder = new Map(orderedIds.map((id, index) => [id, index]));
+  const allQuestions = await listQuestionsForQuestionIds(orderedIds);
+  return allQuestions.sort((a, b) => (idOrder.get(a.id ?? -1) ?? 0) - (idOrder.get(b.id ?? -1) ?? 0));
+}
+
+async function listQuestionsForQuestionIds(questionIds: number[]): Promise<Question[]> {
+  const uniqueIds = [...new Set(questionIds)].filter((id) => Number.isFinite(id));
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const questionSetIds = new Set<number>();
+  const db = await getDatabase();
+  const rows = await db.select<Array<{ question_set_id: number }>>(
+    `SELECT DISTINCT question_set_id FROM questions WHERE id IN (${uniqueIds.map((_, index) => `$${index + 1}`).join(",")})`,
+    uniqueIds
+  );
+  rows.forEach((row) => questionSetIds.add(row.question_set_id));
+  const groups = await Promise.all([...questionSetIds].map((questionSetId) => listQuestions(questionSetId)));
+  const idSet = new Set(uniqueIds);
+  return groups.flat().filter((question) => question.id && idSet.has(question.id));
+}
+
+function isFocusedPracticeMode(mode: AttemptMode): boolean {
+  return mode === "domain_practice" || mode === "mistake_practice" || mode === "review_list_practice";
 }
 
 function buildModuleBreakdown(gradedQuestions: GradedQuestion[], moduleIndexes: number[]): BreakdownRow[] {

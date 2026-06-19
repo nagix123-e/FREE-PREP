@@ -149,6 +149,24 @@ export async function initializeSchema(db: Database): Promise<void> {
     )
   `);
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS score_history_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_attempt_id INTEGER NOT NULL UNIQUE,
+      question_set_id INTEGER NOT NULL,
+      question_set_name TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      status TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      practice_score INTEGER,
+      rw_score INTEGER,
+      math_score INTEGER,
+      accuracy INTEGER NOT NULL DEFAULT 0,
+      duration_sec INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )
+  `);
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS responses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       attempt_id INTEGER NOT NULL,
@@ -349,6 +367,7 @@ export async function getQuestionSet(id: number): Promise<QuestionSet | null> {
 export async function deleteQuestionSet(id: number): Promise<void> {
   const db = await getDatabase();
   await db.execute("PRAGMA foreign_keys = ON");
+  await archiveScoreHistoryForQuestionSet(db, id);
   await db.execute(
     `DELETE FROM responses
      WHERE attempt_id IN (SELECT id FROM attempts WHERE question_set_id = $1)
@@ -375,6 +394,65 @@ export async function deleteQuestionSet(id: number): Promise<void> {
   await db.execute("DELETE FROM attempts WHERE question_set_id = $1", [id]);
   await db.execute("DELETE FROM questions WHERE question_set_id = $1", [id]);
   await db.execute("DELETE FROM question_sets WHERE id = $1", [id]);
+}
+
+async function archiveScoreHistoryForQuestionSet(db: Database, questionSetId: number): Promise<void> {
+  const createdAt = new Date().toISOString();
+  await db.execute(
+    `INSERT OR IGNORE INTO score_history_snapshots (
+       source_attempt_id,
+       question_set_id,
+       question_set_name,
+       mode,
+       status,
+       started_at,
+       completed_at,
+       practice_score,
+       rw_score,
+       math_score,
+       accuracy,
+       duration_sec,
+       created_at
+     )
+     SELECT
+       attempts.id,
+       attempts.question_set_id,
+       question_sets.name,
+       attempts.mode,
+       attempts.status,
+       attempts.started_at,
+       attempts.completed_at,
+       attempts.practice_score,
+       attempts.rw_score,
+       attempts.math_score,
+       CASE
+         WHEN COALESCE(response_totals.response_count, 0) > 0
+           THEN ROUND((COALESCE(response_totals.correct_count, 0) * 100.0) / response_totals.response_count)
+         ELSE 0
+       END,
+       CASE
+         WHEN COALESCE(response_totals.duration_sec, 0) > 0
+           THEN response_totals.duration_sec
+         WHEN attempts.completed_at IS NOT NULL
+           THEN MAX(0, ROUND((julianday(attempts.completed_at) - julianday(attempts.started_at)) * 86400))
+         ELSE 0
+       END,
+       $2
+     FROM attempts
+     JOIN question_sets ON question_sets.id = attempts.question_set_id
+     LEFT JOIN (
+       SELECT
+         attempt_id,
+         COUNT(*) AS response_count,
+         SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct_count,
+         COALESCE(SUM(time_spent_sec), 0) AS duration_sec
+       FROM responses
+       GROUP BY attempt_id
+     ) AS response_totals ON response_totals.attempt_id = attempts.id
+     WHERE attempts.question_set_id = $1
+       AND attempts.status = 'completed'`,
+    [questionSetId, createdAt]
+  );
 }
 
 export async function listQuestions(questionSetId: number): Promise<Question[]> {
