@@ -16,11 +16,9 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            args: ""
-          - platform: macos-latest
-            args: ""
+            args: "--bundles msi,nsis"
           - platform: ubuntu-latest
-            args: ""
+            args: "--bundles deb,appimage"
 
     runs-on: ${{ matrix.platform }}
 
@@ -50,19 +48,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "SAT Practice Simulator ${{ github.ref_name }}"
           releaseBody: |
-            Desktop installers for SAT Practice Simulator.
-
-            macOS DMG builds are signed and notarized when the repository's Apple Developer ID secrets are configured.
+            Desktop installers for SAT Practice Simulator on Windows and Linux.
 
             Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
 
