@@ -263,7 +263,7 @@ function AchievementCard({
           </div>
           <div className="achievement-source">{item.questionSetName}</div>
           <div className="achievement-subtitle">
-            Rank <span className="achievement-highlight">{item.rank}</span>
+            Tier <span className="achievement-highlight">{item.rank}</span>
           </div>
 
           <div className="achievement-glowing-elements">
@@ -478,7 +478,7 @@ async function createAchievementImageBlob(item: AchievementItem): Promise<Blob> 
   drawWrappedText(context, item.questionSetName, width / 2, 940, 660, 42, 2);
 
   context.font = "700 42px Inter, system-ui, sans-serif";
-  context.fillText("Rank", width / 2 - 58, 1060);
+  context.fillText("Tier", width / 2 - 58, 1060);
   context.fillStyle = colors.secondary;
   context.font = "900 42px Inter, system-ui, sans-serif";
   context.fillText(item.rank, width / 2 + 92, 1060);
