@@ -8,7 +8,7 @@ export function HomeScreen() {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const totalQuestions = questionSets.reduce((sum, set) => sum + set.totalQuestions, 0);
   const resumableAttempt = useMemo(
-    () => dashboard?.recentScores.find((attempt) => attempt.status === "paused" || attempt.status === "in_progress"),
+    () => dashboard?.recentScores.find((attempt) => !attempt.archived && attempt.status !== "completed"),
     [dashboard]
   );
 

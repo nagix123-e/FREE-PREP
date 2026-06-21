@@ -277,6 +277,7 @@ export interface BreakdownRow {
 export interface ScoreResult {
   attemptId: number;
   attemptMode: AttemptMode;
+  attemptStatus: AttemptStatus;
   totalScore: number | null;
   rwScore: number | null;
   mathScore: number | null;

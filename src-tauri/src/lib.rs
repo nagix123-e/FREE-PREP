@@ -3,5 +3,5 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
         .run(tauri::generate_context!())
-        .expect("error while running SAT Practice Simulator");
+        .expect("error while running FREE PREP");
 }

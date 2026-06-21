@@ -50,13 +50,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "SAT Practice Simulator ${{ github.ref_name }}"
+          releaseName: "FREE PREP ${{ github.ref_name }}"
           releaseBody: |
-            Desktop installers for SAT Practice Simulator on Windows and Linux.
+            Desktop installers for FREE PREP on Windows and Linux.
 
             Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
 
-            This project is not affiliated with College Board.
+            Not affiliated with or endorsed by College Board.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

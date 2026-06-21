@@ -1,6 +1,6 @@
 # Visual JSON Schema
 
-SAT Practice Simulator renders visuals from CSV data. External official assets are not required.
+FREE PREP renders visuals from CSV data. External official assets are not required.
 
 The active visual columns are:
 

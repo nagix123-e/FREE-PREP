@@ -1,6 +1,6 @@
 # Release Guide
 
-This guide is for maintainers publishing SAT Practice Simulator through GitHub Releases.
+This guide is for maintainers publishing FREE PREP through GitHub Releases.
 
 ## Before Release
 
@@ -42,7 +42,7 @@ Confirm:
 macOS DMG releases must be signed and notarized before they are useful for general users. Unsigned downloaded builds can show:
 
 ```text
-"SAT Practice Simulator" is damaged and can't be opened. You should move it to the Bin.
+"FREE PREP" is damaged and can't be opened. You should move it to the Bin.
 ```
 
 Before pushing a release tag, add these repository secrets in GitHub:

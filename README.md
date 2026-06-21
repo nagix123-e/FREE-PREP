@@ -1,9 +1,11 @@
-# SAT Practice Simulator
+# FREE PREP
 
-SAT Practice Simulator is a local desktop app for importing CSV-based SAT-style practice sets, taking fixed-route practice tests, reviewing answers, and tracking estimated practice performance over time.
+Free Practice Simulator for the SAT® Exam
+
+FREE PREP is a local desktop app for importing CSV-based SAT-style practice sets, taking fixed-route practice tests, reviewing answers, and tracking estimated practice performance over time.
 
 This project is an unofficial SAT practice simulator.
-It is not affiliated with, endorsed by, or sponsored by College Board.
+Not affiliated with or endorsed by College Board.
 
 Scores shown in the app are Practice Score / Estimated Score values only. They are not official SAT scores.
 
@@ -29,7 +31,7 @@ If you only want to use the app, download the installer from GitHub Releases.
 
 1. Open the project's GitHub Releases page.
 2. Download the installer for your operating system.
-3. Install and launch SAT Practice Simulator.
+3. Install and launch FREE PREP.
 4. Import a CSV from the Import CSV screen.
 
 ## Windows Install
@@ -37,7 +39,7 @@ If you only want to use the app, download the installer from GitHub Releases.
 1. Open GitHub Releases.
 2. Download `SAT-Practice-Simulator_x.x.x_x64-setup.exe` if available, or the `.msi` installer.
 3. Run the installer.
-4. Launch SAT Practice Simulator from the Start Menu.
+4. Launch FREE PREP from the Start Menu.
 
 Unsigned Windows apps may show a SmartScreen warning. This project does not require global developer tools or command-line setup for normal use.
 
@@ -46,7 +48,7 @@ Unsigned Windows apps may show a SmartScreen warning. This project does not requ
 1. Open GitHub Releases.
 2. Download the latest `.dmg` file.
 3. Open the `.dmg`.
-4. Drag SAT Practice Simulator into Applications.
+4. Drag FREE PREP into Applications.
 5. Launch it from Applications.
 
 Current macOS release builds are intended to be signed and notarized through GitHub Actions. If macOS says the app is damaged and should be moved to the Bin, delete that copy and download the newest signed `.dmg` from GitHub Releases instead of using an older unsigned build or Download ZIP.
@@ -73,7 +75,7 @@ sudo apt install ./SAT-Practice-Simulator*.deb
 
 ## CSV Import
 
-1. Open SAT Practice Simulator.
+1. Open FREE PREP.
 2. Select Import CSV from the left navigation.
 3. Choose a CSV file.
 4. Review validation results.

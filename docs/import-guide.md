@@ -2,7 +2,7 @@
 
 ## Import A CSV
 
-1. Open SAT Practice Simulator.
+1. Open FREE PREP.
 2. Select Import CSV in the left navigation.
 3. Choose a CSV file.
 4. Review validation results.

@@ -3,7 +3,7 @@
 ## 0.1.0
 
 - Initial local desktop release preparation.
-- CSV import and validation for SAT Practice Simulator question sets.
+- CSV import and validation for FREE PREP question sets.
 - SQLite persistence for question sets, attempts, responses, notes, highlights, and review list data.
 - Fixed full-test route: RW base, RW hard, Math base, Math hard.
 - Focused practice modes.

@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for improving SAT Practice Simulator.
+Thank you for improving FREE PREP.
 
 Please keep changes focused and avoid adding official SAT, Bluebook, College Board logos, branding, or copied UI.
 

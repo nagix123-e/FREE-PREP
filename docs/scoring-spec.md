@@ -1,6 +1,6 @@
 # Scoring Spec
 
-SAT Practice Simulator reports practice-only estimates:
+FREE PREP reports practice-only estimates:
 
 - `Practice Score`
 - `Estimated Score`

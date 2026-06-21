@@ -115,10 +115,11 @@ export function classifyStrength(
   return "Weak";
 }
 
-export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
+export async function gradeAttempt(attemptId: number, options: { persist?: boolean } = {}): Promise<ScoreResult> {
+  const shouldPersist = options.persist ?? true;
   const db = await getDatabase();
-  const attemptRows = await db.select<Array<{ mode: AttemptMode; question_set_id: number }>>(
-    "SELECT mode, question_set_id FROM attempts WHERE id = $1",
+  const attemptRows = await db.select<Array<{ mode: AttemptMode; question_set_id: number; status: ScoreResult["attemptStatus"] }>>(
+    "SELECT mode, question_set_id, status FROM attempts WHERE id = $1",
     [attemptId]
   );
   const attempt = attemptRows[0];
@@ -168,20 +169,31 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
   }
 
   const totalScore = rwScore !== null && mathScore !== null ? calculateTotalScore(rwScore, mathScore) : null;
-  const result = buildScoreResult(attemptId, attempt.mode, gradedQuestions, rwScore, mathScore, totalScore, moduleIndexes);
-
-  await db.execute(
-    `UPDATE attempts
-     SET practice_score = $1,
-         rw_score = $2,
-         math_score = $3,
-         completed_at = COALESCE(completed_at, $4),
-         status = 'completed'
-     WHERE id = $5`,
-    [totalScore, rwScore, mathScore, new Date().toISOString(), attemptId]
+  const result = buildScoreResult(
+    attemptId,
+    attempt.mode,
+    attempt.status,
+    gradedQuestions,
+    rwScore,
+    mathScore,
+    totalScore,
+    moduleIndexes
   );
 
-  if (complementaryAttempt && totalScore !== null) {
+  if (shouldPersist) {
+    await db.execute(
+      `UPDATE attempts
+       SET practice_score = $1,
+           rw_score = $2,
+           math_score = $3,
+           completed_at = COALESCE(completed_at, $4),
+           status = 'completed'
+       WHERE id = $5`,
+      [totalScore, rwScore, mathScore, new Date().toISOString(), attemptId]
+    );
+  }
+
+  if (shouldPersist && complementaryAttempt && totalScore !== null) {
     await saveCombinedScoreForComplementaryAttempt({
       attemptId: complementaryAttempt.id,
       rwScore,
@@ -194,7 +206,7 @@ export async function gradeAttempt(attemptId: number): Promise<ScoreResult> {
 }
 
 export async function getScoreResult(attemptId: number): Promise<ScoreResult> {
-  return gradeAttempt(attemptId);
+  return gradeAttempt(attemptId, { persist: false });
 }
 
 function gradeQuestion(question: Question, response: ResponseRecord | null): GradedQuestion {
@@ -219,6 +231,7 @@ function gradeQuestion(question: Question, response: ResponseRecord | null): Gra
 function buildScoreResult(
   attemptId: number,
   attemptMode: AttemptMode,
+  attemptStatus: ScoreResult["attemptStatus"],
   gradedQuestions: GradedQuestion[],
   rwScore: number | null,
   mathScore: number | null,
@@ -237,6 +250,7 @@ function buildScoreResult(
   return {
     attemptId,
     attemptMode,
+    attemptStatus,
     totalScore,
     rwScore,
     mathScore,

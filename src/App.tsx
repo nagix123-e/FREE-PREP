@@ -16,6 +16,7 @@ import { TestRunnerPage } from "./components/TestRunnerPage";
 import { TestSetupPage } from "./components/TestSetupPage";
 import { StatisticsPage } from "./components/StatisticsPage";
 import { AppLoadingScreen } from "./components/ui/AppLoadingScreen";
+import { Shuffle } from "./components/ui/Shuffle";
 import { PracticeSetupPage } from "./components/practice/PracticeSetupPage";
 import { PracticeRunnerPage } from "./components/practice/PracticeRunnerPage";
 import { DeviceCheckPage } from "./components/testStart/DeviceCheckPage";
@@ -77,12 +78,41 @@ export default function App() {
       <div className="app-shell-grid grid min-h-screen">
         <aside className="border-r border-line bg-white px-4 py-5">
           <button
-            className="mb-8 text-left"
+            className="brand-lockup mb-8 text-left"
             onClick={() => navigate("home")}
             type="button"
           >
-            <div className="text-lg font-semibold tracking-tight">SAT Practice Simulator</div>
-            <div className="mt-1 text-xs font-medium text-muted">Local practice workspace</div>
+            <div className="brand-title">
+              <Shuffle
+                animationMode="evenodd"
+                duration={0.35}
+                easterEggEvery={15}
+                easterEggWords={[
+                  "FLEE GREG",
+                  "TREE STICK",
+                  "SKII STICK",
+                  "FLEA PREP",
+                  "KNEE BREAK",
+                  "GLEE SLIP",
+                  "STAR TREK"
+                ]}
+                loop
+                loopDelay={15}
+                respectReducedMotion
+                shuffleDirection="right"
+                shuffleTimes={1}
+                stagger={0.03}
+                text="FREE PREP"
+                threshold={0.1}
+                triggerOnce={false}
+              />
+            </div>
+            <div className="brand-subtitle">
+              Free Practice Simulator for the SAT® Exam
+            </div>
+            <div className="brand-disclaimer">
+              Not affiliated with or endorsed by College Board.
+            </div>
           </button>
 
           <nav className="space-y-1">

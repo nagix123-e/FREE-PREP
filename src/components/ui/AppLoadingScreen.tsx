@@ -3,7 +3,7 @@ export function AppLoadingScreen() {
 
   return (
     <div className="app-loading-screen">
-      <div className="loader" aria-label="Loading SAT Practice Simulator" role="status">
+      <div className="loader" aria-label="Loading FREE PREP" role="status">
         <div>
           <ul>
             {pages.map((page) => (

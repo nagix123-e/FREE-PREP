@@ -1,6 +1,6 @@
 # CSV Schema
 
-SAT Practice Simulator imports CSV files with one row per question.
+FREE PREP imports CSV files with one row per question.
 
 ## Canonical Headers
 

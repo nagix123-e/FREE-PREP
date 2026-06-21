@@ -18,7 +18,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("SAT Practice Simulator render error", error, info);
+    console.error("FREE PREP render error", error, info);
   }
 
   render() {

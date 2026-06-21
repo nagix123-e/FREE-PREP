@@ -53,9 +53,30 @@ export function ResultPage() {
     : hasRwScore
       ? "RW Practice Score"
       : "Math Practice Score";
+  const isSubmitted = result.attemptStatus === "completed";
 
   return (
     <div className="space-y-6">
+      {!isSubmitted ? (
+        <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-panel">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-semibold">This attempt has not been submitted yet.</div>
+              <p className="mt-1">
+                The score shown here is a preview based on saved answers. Continue the test and submit it to save the final score.
+              </p>
+            </div>
+            <button
+              className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+              onClick={() => navigate("test", selectedSetId ?? undefined, selectedAttemptId)}
+              type="button"
+            >
+              Continue Previous Test
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <section className="rounded-md border border-line bg-white p-6 shadow-panel">
         <div className="flex items-start justify-between gap-4">
           <div>
