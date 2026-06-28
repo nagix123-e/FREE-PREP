@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 import { getPackageTypeLabel, parseCsvFile, parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import {
@@ -32,6 +33,7 @@ export function ImportScreen() {
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [lastSelectionCount, setLastSelectionCount] = useState(0);
   const [nameTouched, setNameTouched] = useState(false);
   const [sampleOptions, setSampleOptions] = useState<SampleSetOption[]>([]);
   const [selectedSampleId, setSelectedSampleId] = useState("");
@@ -99,6 +101,7 @@ export function ImportScreen() {
 
     setIsParsing(true);
     setFileError(null);
+    setLastSelectionCount(files.length);
 
     try {
       const parsedItems = await Promise.all(
@@ -146,6 +149,20 @@ export function ImportScreen() {
     } finally {
       setIsParsing(false);
     }
+  }
+
+  function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = "";
+    void handleFiles(files);
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files).filter((file) =>
+      file.name.toLowerCase().endsWith(".csv")
+    );
+    void handleFiles(files);
   }
 
   async function handleLoadSample() {
@@ -241,6 +258,14 @@ export function ImportScreen() {
     updateActiveQueueItem({ [field]: value } as Partial<ImportQueueItem>);
   }
 
+  function selectQueueItem(id: string) {
+    if (!queue.some((item) => item.id === id)) {
+      return;
+    }
+    setActiveQueueId(id);
+    setNameTouched(false);
+  }
+
   function selectNextUnsaved() {
     const nextPending = queue.find((item) => !item.saved && item.id !== activeItem?.id);
     if (nextPending) {
@@ -287,19 +312,31 @@ export function ImportScreen() {
           full-test, RW-only, or Math-only counts.
         </p>
 
-        <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center hover:border-teal-600 hover:bg-teal-50">
+        <label
+          className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center hover:border-teal-600 hover:bg-teal-50"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handleDrop}
+        >
           <span className="csv-name-wrap max-w-full text-sm font-semibold text-ink">
             {queue.length > 0 ? `${queue.length} CSV file${queue.length === 1 ? "" : "s"} queued` : "Choose CSV files"}
           </span>
-          <span className="mt-2 text-xs text-muted">Parsed locally with Papa Parse</span>
+          <span className="mt-2 text-xs text-muted">
+            Select or drag up to {MAX_IMPORT_FILES} CSV files. Parsed locally with Papa Parse.
+          </span>
           <input
             accept=".csv,text/csv"
             className="sr-only"
             multiple
-            onChange={(event) => void handleFiles(Array.from(event.target.files ?? []).slice(0, MAX_IMPORT_FILES))}
+            onChange={handleFileInputChange}
             type="file"
           />
         </label>
+        {lastSelectionCount > 0 ? (
+          <div className="mt-2 text-xs text-muted">
+            Last selection: {Math.min(lastSelectionCount, MAX_IMPORT_FILES)}/{lastSelectionCount} file
+            {lastSelectionCount === 1 ? "" : "s"} queued.
+          </div>
+        ) : null}
         {queue.length === 0 ? (
           <div className="mt-2 text-xs text-muted">A SAT-format CSV file is required.</div>
         ) : null}
@@ -310,6 +347,66 @@ export function ImportScreen() {
         ) : null}
 
         {isParsing ? <div className="mt-4 text-sm text-muted">Parsing CSV...</div> : null}
+
+        {queue.length > 0 ? (
+          <div className="mt-5 rounded-md border border-line bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm font-semibold">Import queue</div>
+                <div className="mt-1 text-xs text-muted">
+                  {queue.length} file{queue.length === 1 ? "" : "s"} in this session
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-slate-500">
+                {queue.length}/{MAX_IMPORT_FILES} max per batch
+              </div>
+            </div>
+            <div className="mt-3 max-h-44 space-y-2 overflow-auto pr-1">
+              {queue.map((item, index) => {
+                const isActive = item.id === activeItem?.id;
+                const statusLabel = item.parseError
+                  ? "Parse error"
+                  : item.saved
+                    ? "Saved"
+                    : item.summary
+                      ? "Ready"
+                      : "Pending";
+                const statusClass = item.parseError
+                  ? "border-red-200 bg-red-50 text-red-800"
+                  : item.saved
+                    ? "border-teal-100 bg-teal-50 text-teal-800"
+                    : isActive
+                      ? "border-sky-200 bg-sky-50 text-sky-800"
+                      : "border-slate-200 bg-white text-slate-700";
+
+                return (
+                  <button
+                    className={`w-full rounded-md border px-3 py-2 text-left text-sm transition ${
+                      isActive ? "ring-2 ring-teal-500 ring-offset-1" : "hover:bg-slate-100"
+                    }`}
+                    key={item.id}
+                    onClick={() => selectQueueItem(item.id)}
+                    type="button"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-ink">
+                          {index + 1}/{queue.length} {item.setName?.trim() ? item.setName : item.fileName}
+                        </div>
+                        <div className="csv-name-wrap mt-1 max-w-full text-xs text-muted">
+                          {item.fileName}
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${statusClass}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {unsavedSampleOptions.length > 0 ? (
           <div className="mt-5 rounded-md border border-line bg-slate-50 p-4">

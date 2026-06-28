@@ -300,16 +300,30 @@ function AchievementCard({
 }
 
 function AchievementShareWidget({ item }: { item: AchievementItem }) {
+  const [downloadState, setDownloadState] = useState<"idle" | "saving" | "saved">("idle");
+
+  async function handleDownload() {
+    setDownloadState("saving");
+    try {
+      await downloadAchievementImage(item);
+      setDownloadState("saved");
+      window.setTimeout(() => setDownloadState("idle"), 1800);
+    } catch {
+      setDownloadState("idle");
+    }
+  }
+
   return (
-    <div className="achievement-share-panel">
+    <div className={`achievement-share-panel ${downloadState === "saved" ? "is-downloaded" : ""}`}>
       <div className="achievement-share-title">Download achievement</div>
       <ul className="achievement-share-list example-1">
         <ShareButton
-          label="Download"
-          onClick={() => void downloadAchievementImage(item)}
+          label={downloadState === "saved" ? "Downloaded" : downloadState === "saving" ? "Saving" : "Download"}
+          onClick={() => void handleDownload()}
           social="download"
+          status={downloadState}
         >
-          <DownloadIcon />
+          {downloadState === "saved" ? <CheckIcon /> : <DownloadIcon />}
         </ShareButton>
       </ul>
     </div>
@@ -320,16 +334,25 @@ function ShareButton({
   children,
   label,
   onClick,
-  social
+  social,
+  status = "idle"
 }: {
   children: ReactNode;
   label: string;
   onClick: () => void;
   social: string;
+  status?: "idle" | "saving" | "saved";
 }) {
   return (
     <li className="icon-content">
-      <button aria-label={label} className="link" data-social={social} onClick={onClick} type="button">
+      <button
+        aria-label={label}
+        className={`link ${status === "saved" ? "is-saved" : ""} ${status === "saving" ? "is-saving" : ""}`}
+        data-social={social}
+        disabled={status === "saving"}
+        onClick={onClick}
+        type="button"
+      >
         <span className="tooltip">{label}</span>
         {children}
       </button>
@@ -572,6 +595,14 @@ function DownloadIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path d="M11 3h2v10.2l3.3-3.3 1.4 1.4L12 17 6.3 11.3l1.4-1.4 3.3 3.3V3Zm-6 16h14v2H5v-2Z" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4-9.9 9.9Z" />
     </svg>
   );
 }

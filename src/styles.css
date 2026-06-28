@@ -2022,6 +2022,11 @@ textarea:focus-visible {
   font-weight: bolder;
 }
 
+.achievement-share-list.example-1 .icon-content .link:disabled {
+  cursor: wait;
+  opacity: 0.82;
+}
+
 .achievement-share-list.example-1 .icon-content .link:hover {
   box-shadow: 3px 2px 45px 0 rgb(0 0 0 / 12%);
 }
@@ -2038,6 +2043,26 @@ textarea:focus-visible {
 
 .achievement-share-list.example-1 .icon-content .link[data-social="download"]:hover {
   color: #23b100;
+}
+
+.achievement-share-panel.is-downloaded .achievement-share-title {
+  animation: achievementDownloadedText 620ms ease both;
+}
+
+.achievement-share-list.example-1 .icon-content .link.is-saving {
+  color: #93c5fd;
+}
+
+.achievement-share-list.example-1 .icon-content .link.is-saved {
+  color: #ffffff;
+  background: #16a34a;
+  animation: achievementDownloadPop 420ms ease-out both;
+  box-shadow:
+    0 0 0 4px rgba(34, 197, 94, 0.16);
+}
+
+.achievement-share-list.example-1 .icon-content .link.is-saved svg {
+  animation: achievementCheckDraw 520ms ease-out 80ms both;
 }
 
 @keyframes achievementFlipIn {
@@ -2065,6 +2090,57 @@ textarea:focus-visible {
 
   100% {
     opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes achievementDownloadPop {
+  0% {
+    opacity: 0.78;
+    transform: scale(0.98);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes achievementCheckDraw {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes achievementDownloadedText {
+  0% {
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(0);
+  }
+
+  45% {
+    color: #86efac;
+    transform: translateY(-2px);
+  }
+
+  100% {
+    color: rgba(255, 255, 255, 0.9);
     transform: translateY(0);
   }
 }
