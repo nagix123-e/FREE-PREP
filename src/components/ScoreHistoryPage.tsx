@@ -4,13 +4,21 @@ import { useAppStore } from "../store/appStore";
 import type { AttemptSummary } from "../types";
 
 export function ScoreHistoryPage() {
-  const { navigate, setDbError, setReviewFilterPreset } = useAppStore();
+  const { navigate, setDbError, setReviewFilterPreset, tutorial, setTutorialStep, exitTutorial } = useAppStore();
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     void loadHistory();
   }, []);
+
+  useEffect(() => {
+    if (!tutorial.active || tutorial.step !== "score_history_delete" || loading || !tutorial.scoreHistoryId) return;
+    if (tutorial.scoreHistoryId && !attempts.some((attempt) => attempt.id === tutorial.scoreHistoryId)) {
+      setTutorialStep("done");
+      window.setTimeout(() => exitTutorial(), 900);
+    }
+  }, [attempts, exitTutorial, loading, setTutorialStep, tutorial.active, tutorial.scoreHistoryId, tutorial.step]);
 
   async function loadHistory() {
     setLoading(true);
@@ -27,6 +35,10 @@ export function ScoreHistoryPage() {
   async function handleDelete(attemptId: number) {
     await deleteAttempt(attemptId);
     await loadHistory();
+    if (tutorial.active && tutorial.scoreHistoryId === attemptId) {
+      setTutorialStep("done");
+      window.setTimeout(() => exitTutorial(), 900);
+    }
   }
 
   return (
@@ -72,8 +84,10 @@ export function ScoreHistoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {attempts.map((attempt) => (
-                <tr key={attempt.id}>
+              {attempts.map((attempt) => {
+                const isTutorialAttempt = tutorial.active && tutorial.scoreHistoryId === attempt.id;
+                return (
+                <tr className={isTutorialAttempt ? "tutorial-highlight" : ""} key={attempt.id}>
                   <td className="px-5 py-3">{formatDate(attempt.completedAt ?? attempt.startedAt)}</td>
                   <td className="csv-name-cell px-5 py-3 font-medium">
                     <span className="csv-name-wrap">{attempt.questionSetName}</span>
@@ -113,7 +127,9 @@ export function ScoreHistoryPage() {
                         <span className="score-history-action-note">Details removed</span>
                       )}
                       <button
-                        className="delete-gradient-button score-history-action-button rounded-md px-3 py-2 text-xs font-semibold text-white"
+                        className={`delete-gradient-button score-history-action-button rounded-md px-3 py-2 text-xs font-semibold text-white ${
+                          isTutorialAttempt ? "tutorial-target-ring" : ""
+                        }`}
                         onClick={() => void handleDelete(attempt.id)}
                         type="button"
                       >
@@ -122,7 +138,8 @@ export function ScoreHistoryPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>

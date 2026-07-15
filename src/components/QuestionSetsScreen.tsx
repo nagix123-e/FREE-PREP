@@ -5,7 +5,7 @@ import { useAppStore } from "../store/appStore";
 import { DropdownSelect, type DropdownOption } from "./ui/DropdownSelect";
 
 export function QuestionSetsScreen() {
-  const { questionSets, setQuestionSets, navigate, setDbError } = useAppStore();
+  const { questionSets, setQuestionSets, navigate, setDbError, tutorial, setTutorialStep } = useAppStore();
   const [loading, setLoading] = useState(false);
   const [deletingSetId, setDeletingSetId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState("");
@@ -157,50 +157,58 @@ export function QuestionSetsScreen() {
       ) : null}
 
       {questionSets.length > 0 ? (
-        <table className="w-full table-fixed border-collapse text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="w-[34%] px-6 py-3 font-semibold">Name</th>
-              <th className="px-6 py-3 font-semibold">Imported</th>
-              <th className="px-6 py-3 font-semibold">Type</th>
-              <th className="px-6 py-3 font-semibold">Questions</th>
-              <th className="px-6 py-3 font-semibold">Status</th>
-              <th className="px-6 py-3 font-semibold"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {questionSets.map((set) => (
-              <tr className="hover:bg-slate-50" key={set.id}>
-                <td className="px-6 py-4">
-                  <div className="csv-name-wrap font-semibold text-ink">{set.name}</div>
+        <div className="question-sets-table text-left text-sm">
+          <div className="question-sets-grid bg-slate-50 px-6 py-3 text-xs font-semibold uppercase text-slate-500">
+            <div>Name</div>
+            <div>Imported</div>
+            <div>Type</div>
+            <div>Questions</div>
+            <div>Status</div>
+            <div aria-hidden="true" />
+          </div>
+          <div className="divide-y divide-line">
+            {questionSets.map((set) => {
+              const isTutorialSet = tutorial.active && tutorial.importedSetId === set.id;
+              return (
+              <div
+                className={`question-sets-grid px-6 py-4 hover:bg-slate-50 ${isTutorialSet ? "tutorial-highlight" : ""}`}
+                key={set.id}
+              >
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <div className="csv-name-wrap font-semibold text-ink">{set.name}</div>
+                    {set.hasAttempts ? (
+                      <span className="shrink-0 text-xs font-semibold text-blue-700">Done</span>
+                    ) : null}
+                  </div>
                   <div className="mt-1 text-xs text-muted">{set.description || "No description"}</div>
-                </td>
-                <td className="px-6 py-4 text-slate-600">{formatDate(set.importedAt)}</td>
-                <td className="px-6 py-4 text-slate-600">
+                </div>
+                <div className="text-slate-600">{formatDate(set.importedAt)}</div>
+                <div className="text-slate-600">
                   <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
                     {getPackageTypeLabel(set.packageType)}
                   </span>
                   <div className="mt-1 text-xs text-muted">
                     RW {set.sectionCounts.RW} / Math {set.sectionCounts.MATH}
                   </div>
-                </td>
-                <td className="px-6 py-4 text-slate-600">{set.totalQuestions}</td>
-                <td className="px-6 py-4">
+                </div>
+                <div className="text-slate-600">{set.totalQuestions}</div>
+                <div className="whitespace-nowrap">
                   <span className="rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700">
                     {set.status}
                   </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
+                </div>
+                <div className="text-right">
+                  <div className="question-set-actions flex justify-end gap-3 whitespace-nowrap">
                     <button
-                      className="rounded-md border border-line px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white"
+                      className="min-w-0 rounded-md border border-line px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white"
                       onClick={() => navigate("preview", set.id)}
                       type="button"
                     >
                       Preview
                     </button>
                     <button
-                      className="delete-gradient-button rounded-md px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      className="delete-gradient-button min-w-0 rounded-md px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={deletingSetId === set.id}
                       onClick={() => void handleDelete(set.id)}
                       type="button"
@@ -208,18 +216,26 @@ export function QuestionSetsScreen() {
                       {deletingSetId === set.id ? "Deleting..." : "Delete"}
                     </button>
                     <button
-                      className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
-                      onClick={() => navigate(set.packageType === "full_test" ? "testOverview" : "setup", set.id)}
+                      className={`min-w-0 rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600 ${
+                        isTutorialSet ? "tutorial-active-target tutorial-target-ring" : ""
+                      }`}
+                      onClick={() => {
+                        if (isTutorialSet) {
+                          setTutorialStep(set.packageType === "full_test" ? "test_overview_continue" : "setup_start");
+                        }
+                        navigate(set.packageType === "full_test" ? "testOverview" : "setup", set.id);
+                      }}
                       type="button"
                     >
                       {getStartButtonLabel(set.packageType)}
                     </button>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            );
+            })}
+          </div>
+        </div>
       ) : null}
     </section>
   );

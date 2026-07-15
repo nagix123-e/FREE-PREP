@@ -6,7 +6,7 @@ import { useTestSessionStore } from "../store/testSessionStore";
 import type { PracticeTestCourse, QuestionSet } from "../types";
 
 export function TestSetupPage() {
-  const { selectedSetId, navigate, setDbError } = useAppStore();
+  const { selectedSetId, navigate, setDbError, tutorial, recordTutorialPractice } = useAppStore();
   const { error, loading, startAttempt } = useTestSessionStore();
   const [set, setSet] = useState<QuestionSet | null>(null);
   const displayedModuleIndexes = getDisplayedModuleIndexes(set);
@@ -40,6 +40,13 @@ export function TestSetupPage() {
     }
     try {
       const attempt = await startAttempt(selectedSetId, course);
+      if (
+        tutorial.active &&
+        tutorial.importedSetId === selectedSetId &&
+        course === "rw"
+      ) {
+        recordTutorialPractice(attempt.id);
+      }
       setDbError(null);
       navigate("test", selectedSetId, attempt.id);
     } catch (startError: unknown) {
@@ -95,6 +102,13 @@ export function TestSetupPage() {
           ) : null}
           {set?.packageType !== "math_section" ? (
             <PracticeStartButton
+              className={
+                tutorial.active &&
+                (tutorial.step === "question_sets" || tutorial.step === "setup_start") &&
+                tutorial.importedSetId === selectedSetId
+                  ? "tutorial-active-target tutorial-target-ring"
+                  : ""
+              }
               disabled={loading}
               label="Start RW Only Full Hard Practice Test"
               onClick={() => void handleStart("rw")}
@@ -155,17 +169,19 @@ function getSetupDescription(set: QuestionSet | null): string {
 }
 
 function PracticeStartButton({
+  className = "",
   disabled,
   label,
   onClick
 }: {
+  className?: string;
   disabled: boolean;
   label: string;
   onClick: () => void;
 }) {
   return (
     <button
-      className="h-11 w-full rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+      className={`h-11 w-full rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300 ${className}`}
       disabled={disabled}
       onClick={onClick}
       type="button"

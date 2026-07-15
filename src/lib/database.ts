@@ -325,7 +325,8 @@ export async function saveQuestionSet(input: {
       packageType,
       sourceFilename: input.sourceFilename ?? "",
       rowCount,
-      sectionCounts
+      sectionCounts,
+      hasAttempts: false
     };
   } catch (error) {
     try {
@@ -345,7 +346,8 @@ export async function listQuestionSets(): Promise<QuestionSet[]> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
     `SELECT id, name, description, imported_at, total_questions, status,
-            package_type, source_filename, row_count, section_counts
+            package_type, source_filename, row_count, section_counts,
+            EXISTS(SELECT 1 FROM attempts WHERE attempts.question_set_id = question_sets.id) AS has_attempts
      FROM question_sets
      ORDER BY imported_at DESC`
   );
@@ -738,6 +740,7 @@ interface QuestionSetRow {
   source_filename: string | null;
   row_count: number | null;
   section_counts: string | null;
+  has_attempts?: number | boolean | string | null;
 }
 
 interface QuestionRow {
@@ -801,7 +804,8 @@ function toQuestionSet(row: QuestionSetRow): QuestionSet {
     packageType,
     sourceFilename: row.source_filename ?? "",
     rowCount,
-    sectionCounts
+    sectionCounts,
+    hasAttempts: row.has_attempts === true || row.has_attempts === 1 || row.has_attempts === "1"
   };
 }
 

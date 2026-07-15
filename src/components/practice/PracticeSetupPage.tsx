@@ -216,6 +216,7 @@ export function PracticeSetupPage({ mode }: { mode: PracticeSetupMode }) {
         )}
         {isDomainPractice ? (
           <DropdownSelect
+            className="domain-practice-domain-select"
             label="Content Domain"
             onChange={setDomain}
             options={domains.map((item) => ({ value: item, label: item }))}

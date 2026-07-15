@@ -7,7 +7,7 @@ import type { Question, QuestionSet } from "../types";
 import { VisualRenderer } from "./visual/VisualRenderer";
 
 export function PreviewScreen() {
-  const { selectedSetId, navigate, setDbError } = useAppStore();
+  const { selectedSetId, navigate, setDbError, tutorial, setTutorialStep } = useAppStore();
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
@@ -64,8 +64,17 @@ export function PreviewScreen() {
           ) : null}
           {set ? (
             <button
-              className="mt-3 w-full rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600"
-              onClick={() => navigate(set.packageType === "full_test" ? "testOverview" : "setup", selectedSetId)}
+              className={`mt-3 w-full rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600 ${
+                tutorial.active && tutorial.importedSetId === selectedSetId && tutorial.step === "question_sets"
+                  ? "tutorial-active-target tutorial-target-ring"
+                  : ""
+              }`}
+              onClick={() => {
+                if (tutorial.active && tutorial.importedSetId === selectedSetId) {
+                  setTutorialStep(set.packageType === "full_test" ? "test_overview_continue" : "setup_start");
+                }
+                navigate(set.packageType === "full_test" ? "testOverview" : "setup", selectedSetId);
+              }}
               type="button"
             >
               {getPreviewStartLabel(set.packageType)}

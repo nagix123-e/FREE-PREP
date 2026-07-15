@@ -6,7 +6,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: "system",
   timerDefaultVisible: true,
   defaultPracticeLength: 20,
-  fullscreenTestMode: false
+  fullscreenTestMode: false,
+  audioEnabled: true,
+  scoreCardName: ""
 };
 
 const SETTINGS_KEY = "app_settings";

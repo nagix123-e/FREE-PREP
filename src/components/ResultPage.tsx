@@ -6,7 +6,15 @@ import { BreakdownTable } from "./result/BreakdownTable";
 import { ScoreSummaryCard } from "./result/ScoreSummaryCard";
 
 export function ResultPage() {
-  const { selectedAttemptId, navigate, selectedSetId, setDbError, setReviewFilterPreset } = useAppStore();
+  const {
+    selectedAttemptId,
+    navigate,
+    selectedSetId,
+    setDbError,
+    setReviewFilterPreset,
+    tutorial,
+    recordTutorialHistory
+  } = useAppStore();
   const [result, setResult] = useState<ScoreResult | null>(null);
 
   useEffect(() => {
@@ -22,6 +30,17 @@ export function ResultPage() {
         setDbError(error instanceof Error ? error.message : "Could not load result.")
       );
   }, [selectedAttemptId, setDbError]);
+
+  useEffect(() => {
+    if (
+      tutorial.active &&
+      selectedAttemptId &&
+      tutorial.practiceSessionId === selectedAttemptId &&
+      tutorial.step === "score_history_delete"
+    ) {
+      recordTutorialHistory(selectedAttemptId);
+    }
+  }, [recordTutorialHistory, selectedAttemptId, tutorial.active, tutorial.practiceSessionId, tutorial.step]);
 
   if (!selectedAttemptId) {
     return (

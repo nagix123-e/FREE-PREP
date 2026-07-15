@@ -4,17 +4,18 @@ export type DropdownOption = {
 };
 
 type DropdownSelectProps = {
+  className?: string;
   label: string;
   onChange: (value: string) => void;
   options: DropdownOption[];
   value: string;
 };
 
-export function DropdownSelect({ label, onChange, options, value }: DropdownSelectProps) {
+export function DropdownSelect({ className = "", label, onChange, options, value }: DropdownSelectProps) {
   const selected = options.find((option) => option.value === value) ?? options[0];
 
   return (
-    <div className="dropdown-select">
+    <div className={`dropdown-select ${className}`.trim()}>
       <div className="dropdown-select__label">{label}</div>
       <ul className="menu dropdown-menu">
         <li className="item">

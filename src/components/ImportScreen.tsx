@@ -27,7 +27,7 @@ type ImportQueueItem = {
 const MAX_IMPORT_FILES = 10;
 
 export function ImportScreen() {
-  const { navigate, questionSets, setQuestionSets, setDbError } = useAppStore();
+  const { navigate, questionSets, setQuestionSets, setDbError, tutorial, recordTutorialImport } = useAppStore();
   const [queue, setQueue] = useState<ImportQueueItem[]>([]);
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -219,6 +219,9 @@ export function ImportScreen() {
       const sets = await listQuestionSets();
       setQuestionSets(sets);
       setDbError(null);
+      if (tutorial.active) {
+        recordTutorialImport(saved.id, saved.name);
+      }
       setQueue((current) => {
         const updated = current.map((item) =>
           item.id === activeItem.id
@@ -304,7 +307,7 @@ export function ImportScreen() {
   }
 
   return (
-    <div className="import-layout-grid grid gap-6">
+    <div className={`import-layout-grid grid gap-6 ${tutorial.active && tutorial.step === "import_csv" ? "tutorial-active-target" : ""}`}>
       <section className="rounded-md border border-line bg-white p-6 shadow-panel">
         <h2 className="text-lg font-semibold">Import a SAT-format CSV</h2>
         <p className="mt-2 text-sm text-slate-600">

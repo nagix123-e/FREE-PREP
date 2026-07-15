@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { loadSettings } from "../services/settingsService";
 import { listAttemptHistory } from "../services/attemptService";
+import { getScoreResult } from "../services/scoringService";
 import { useAppStore } from "../store/appStore";
-import type { AttemptSummary } from "../types";
+import type { AttemptSummary, BreakdownRow, ScoreResult } from "../types";
 
 type AchievementCategory = "Total" | "RW" | "Math";
 type AchievementRank = "obsidian" | "gold" | "silver" | "bronze" | "black" | "white";
+type BadgeTier = "blue" | "yellow" | "pink" | "purple";
 
 interface AchievementItem {
   id: string;
@@ -17,6 +20,42 @@ interface AchievementItem {
 }
 
 type AchievementGroups = Record<AchievementCategory, AchievementItem[]>;
+
+interface BadgeItem {
+  id: string;
+  title: string;
+  value: string;
+  tier: BadgeTier;
+}
+
+interface AchievementProgress {
+  xp: number;
+  level: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  percent: number;
+}
+
+interface AchievementSnapshot {
+  badgeIds: string[];
+  cardIds: string[];
+  xp: number;
+  level: number;
+  percent: number;
+}
+
+interface AchievementAnimationState {
+  changedXp: boolean;
+  newBadgeIds: Set<string>;
+  newCardIds: Set<string>;
+  previousPercent: number;
+}
+
+interface AchievementLevelTracker {
+  latestAttemptId: number;
+  level: number;
+  percent: number;
+}
 
 const CATEGORY_LABELS: Record<AchievementCategory, string> = {
   Total: "TOTAL",
@@ -84,18 +123,219 @@ const INITIAL_EXPANDED: Record<AchievementCategory, boolean> = {
   Math: false
 };
 
+const ACHIEVEMENT_SNAPSHOT_KEY = "sat-practice-simulator-achievement-snapshot";
+const ACHIEVEMENT_CONSUMED_LEVEL_UP_KEY = "sat-practice-simulator-consumed-level-up";
+const ACHIEVEMENT_LEVEL_TRACKER_KEY = "sat-practice-simulator-level-tracker";
+const ACHIEVEMENT_CLICK_SOUND_SRC = "/audio/card-badge.mp3";
+const ACHIEVEMENT_CLICK_SOUND_START_SECONDS = 0.2;
+const ACHIEVEMENT_CLICK_SOUND_END_SECONDS = 3;
+const ACHIEVEMENT_XP_SOUND_SRC = "/audio/xp-level-up.mp3";
+const ACHIEVEMENT_LEVEL_TRANSITION_SOUND_SRC = "/audio/xp-level-transition.mp3";
+const ACHIEVEMENT_XP_BAR_ANIMATION_MS = 2000;
+
+let achievementAudioContext: AudioContext | null = null;
+let achievementClickBuffer: AudioBuffer | null = null;
+let achievementXpBuffer: AudioBuffer | null = null;
+let achievementLevelTransitionBuffer: AudioBuffer | null = null;
+let achievementClickBufferPromise: Promise<AudioBuffer | null> | null = null;
+let achievementXpBufferPromise: Promise<AudioBuffer | null> | null = null;
+let achievementLevelTransitionBufferPromise: Promise<AudioBuffer | null> | null = null;
+const activeAchievementClickSounds = new Set<HTMLAudioElement>();
+
+const EMPTY_ANIMATION_STATE: AchievementAnimationState = {
+  changedXp: false,
+  newBadgeIds: new Set<string>(),
+  newCardIds: new Set<string>(),
+  previousPercent: 0
+};
+
+function playAchievementClickSound(audioEnabled: boolean) {
+  if (!audioEnabled) return;
+  playHtmlAchievementClickFallback();
+}
+
+function playAchievementXpSound(audioEnabled: boolean) {
+  if (!audioEnabled) return;
+  void playBufferedAchievementSound("xp", 0.72, 0);
+}
+
+function playAchievementLevelTransitionSound(audioEnabled: boolean) {
+  if (!audioEnabled) return;
+  void playBufferedAchievementSound("level-transition", 0.76, 0);
+}
+
+function preloadAchievementSounds(audioEnabled: boolean) {
+  if (!audioEnabled) return;
+  void loadAchievementSoundBuffer("click");
+  void loadAchievementSoundBuffer("xp");
+  void loadAchievementSoundBuffer("level-transition");
+}
+
+function getAchievementAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  const AudioContextConstructor =
+    window.AudioContext ??
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return null;
+  achievementAudioContext = achievementAudioContext ?? new AudioContextConstructor();
+  return achievementAudioContext;
+}
+
+async function loadAchievementSoundBuffer(kind: "click" | "xp" | "level-transition"): Promise<AudioBuffer | null> {
+  const existing =
+    kind === "click"
+      ? achievementClickBuffer
+      : kind === "xp"
+        ? achievementXpBuffer
+        : achievementLevelTransitionBuffer;
+  if (existing) return existing;
+
+  const existingPromise =
+    kind === "click"
+      ? achievementClickBufferPromise
+      : kind === "xp"
+        ? achievementXpBufferPromise
+        : achievementLevelTransitionBufferPromise;
+  if (existingPromise) return existingPromise;
+
+  const context = getAchievementAudioContext();
+  if (!context) return null;
+
+  const source =
+    kind === "click"
+      ? ACHIEVEMENT_CLICK_SOUND_SRC
+      : kind === "xp"
+        ? ACHIEVEMENT_XP_SOUND_SRC
+        : ACHIEVEMENT_LEVEL_TRANSITION_SOUND_SRC;
+  const promise = fetch(source)
+    .then((response) => response.arrayBuffer())
+    .then((arrayBuffer) => context.decodeAudioData(arrayBuffer))
+    .then((buffer) => {
+      if (kind === "click") {
+        achievementClickBuffer = buffer;
+      } else if (kind === "xp") {
+        achievementXpBuffer = buffer;
+      } else {
+        achievementLevelTransitionBuffer = buffer;
+      }
+      return buffer;
+    })
+    .catch(() => null);
+
+  if (kind === "click") {
+    achievementClickBufferPromise = promise;
+  } else if (kind === "xp") {
+    achievementXpBufferPromise = promise;
+  } else {
+    achievementLevelTransitionBufferPromise = promise;
+  }
+  return promise;
+}
+
+async function playBufferedAchievementSound(
+  kind: "click" | "xp" | "level-transition",
+  volume: number,
+  startAt: number,
+  endAt?: number
+): Promise<boolean> {
+  const context = getAchievementAudioContext();
+  if (!context) return false;
+  if (context.state === "suspended") {
+    await context.resume().catch(() => undefined);
+  }
+  if (context.state === "suspended") return false;
+
+  const buffer = await loadAchievementSoundBuffer(kind);
+  if (!buffer) return false;
+
+  const offset = Math.min(startAt, Math.max(0, buffer.duration - 0.01));
+  const duration = endAt === undefined ? undefined : Math.max(0.01, Math.min(endAt, buffer.duration) - offset);
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  gain.gain.value = volume;
+  source.connect(gain);
+  gain.connect(context.destination);
+  source.start(0, offset, duration);
+  return true;
+}
+
+function playHtmlAchievementClickFallback() {
+  if (typeof Audio === "undefined") return;
+
+  const audio = new Audio(ACHIEVEMENT_CLICK_SOUND_SRC);
+  audio.preload = "auto";
+  audio.volume = 0.62;
+  activeAchievementClickSounds.add(audio);
+  try {
+    audio.currentTime = ACHIEVEMENT_CLICK_SOUND_START_SECONDS;
+  } catch {
+    // Some WebViews reject seeking before metadata is ready; playback still starts as soon as possible.
+  }
+  const cleanup = () => {
+    window.clearTimeout(stopTimer);
+    activeAchievementClickSounds.delete(audio);
+  };
+  const stopTimer = window.setTimeout(() => {
+    audio.pause();
+    cleanup();
+  }, (ACHIEVEMENT_CLICK_SOUND_END_SECONDS - ACHIEVEMENT_CLICK_SOUND_START_SECONDS) * 1000);
+  audio.addEventListener("ended", cleanup, { once: true });
+  void audio.play().catch(cleanup);
+}
+
 export function AchievementsPage() {
   const { setDbError } = useAppStore();
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
+  const [scoreResults, setScoreResults] = useState<ScoreResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Record<AchievementCategory, boolean>>(INITIAL_EXPANDED);
+  const [badgesExpanded, setBadgesExpanded] = useState(false);
+  const [animationState, setAnimationState] = useState<AchievementAnimationState>(EMPTY_ANIMATION_STATE);
+  const [animatedProgressPercent, setAnimatedProgressPercent] = useState<number | null>(null);
+  const [animatedProgressLevel, setAnimatedProgressLevel] = useState<number | null>(null);
+  const [progressAnimationPhase, setProgressAnimationPhase] = useState<"idle" | "fill" | "reset" | "grow">("idle");
   const [selectedAchievement, setSelectedAchievement] = useState<AchievementItem | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
+  const [badgeMotionLite, setBadgeMotionLite] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [scoreCardName, setScoreCardName] = useState("");
+  const processedSnapshotKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    loadSettings()
+      .then((settings) => {
+        setAudioEnabled(settings.audioEnabled);
+        setScoreCardName(settings.scoreCardName.trim());
+        preloadAchievementSounds(settings.audioEnabled);
+      })
+      .catch(() => {
+        setAudioEnabled(true);
+        setScoreCardName("");
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedBadge) return;
+    setBadgeMotionLite(true);
+    const timeoutId = window.setTimeout(() => setBadgeMotionLite(false), 520);
+    return () => window.clearTimeout(timeoutId);
+  }, [selectedBadge]);
 
   useEffect(() => {
     setLoading(true);
     listAttemptHistory()
       .then((history) => {
         setAttempts(history);
+        setDbError(null);
+        return Promise.all(
+          history
+            .filter((attempt) => attempt.status === "completed" && attempt.id > 0)
+            .map((attempt) => getScoreResult(attempt.id).catch(() => null))
+        );
+      })
+      .then((results) => {
+        setScoreResults(results.filter((result): result is ScoreResult => result !== null));
         setDbError(null);
       })
       .catch((error: unknown) => {
@@ -105,41 +345,161 @@ export function AchievementsPage() {
   }, [setDbError]);
 
   const groups = useMemo(() => buildAchievementGroups(attempts), [attempts]);
+  const badges = useMemo(() => buildBadges(attempts, scoreResults), [attempts, scoreResults]);
+  const progress = useMemo(() => buildProgress(attempts), [attempts]);
+  const hasAnyAchievement = getTotalCardCount(groups) > 0 || badges.length > 0;
+  const allCardIds = useMemo(() => getAllCardIds(groups), [groups]);
+
+  useEffect(() => {
+    if (loading || !hasAnyAchievement) return;
+
+    const snapshot = buildAchievementSnapshot(progress, badges, allCardIds);
+    const snapshotKey = getAchievementSnapshotKey(snapshot);
+    const previous = readAchievementSnapshot();
+    const latestAttemptId = getLatestCompletedAttemptId(attempts);
+    const previousProgress = buildProgressBeforeLatestAttempt(attempts, latestAttemptId);
+    const previousLevelTracker = readAchievementLevelTracker();
+    if (!previous) {
+      writeAchievementSnapshot(snapshot);
+      writeAchievementLevelTracker({ latestAttemptId, level: progress.level, percent: progress.percent });
+      processedSnapshotKeyRef.current = snapshotKey;
+      setAnimationState(EMPTY_ANIMATION_STATE);
+      setAnimatedProgressPercent(progress.percent);
+      setAnimatedProgressLevel(progress.level);
+      setProgressAnimationPhase("idle");
+      return;
+    }
+
+    if (processedSnapshotKeyRef.current === snapshotKey) {
+      setAnimationState(EMPTY_ANIMATION_STATE);
+      setAnimatedProgressPercent(progress.percent);
+      setAnimatedProgressLevel(progress.level);
+      setProgressAnimationPhase("idle");
+      return;
+    }
+
+    if (!previousLevelTracker) {
+      writeAchievementLevelTracker({ latestAttemptId, level: progress.level, percent: progress.percent });
+      writeAchievementSnapshot(snapshot);
+      processedSnapshotKeyRef.current = snapshotKey;
+      setAnimationState(EMPTY_ANIMATION_STATE);
+      setAnimatedProgressPercent(progress.percent);
+      setAnimatedProgressLevel(progress.level);
+      setProgressAnimationPhase("idle");
+      return;
+    }
+
+    const newBadgeIds = snapshot.badgeIds.filter((id) => !previous.badgeIds.includes(id));
+    const newCardIds = snapshot.cardIds.filter((id) => !previous.cardIds.includes(id));
+    const levelUpEventKey = getLevelUpEventKey(latestAttemptId, previousProgress, snapshot);
+    const shouldAnimateXp =
+      latestAttemptId > previousLevelTracker.latestAttemptId &&
+      progress.level > previousProgress.level &&
+      !hasConsumedLevelUpEvent(levelUpEventKey);
+    const nextAnimationState: AchievementAnimationState = {
+      changedXp: shouldAnimateXp,
+      newBadgeIds: new Set(newBadgeIds),
+      newCardIds: new Set(newCardIds),
+      previousPercent: snapshot.level > previous.level ? 0 : previous.percent
+    };
+    processedSnapshotKeyRef.current = snapshotKey;
+    setAnimationState(nextAnimationState);
+    writeAchievementSnapshot(snapshot);
+    writeAchievementLevelTracker({ latestAttemptId, level: progress.level, percent: progress.percent });
+
+    if (nextAnimationState.changedXp) {
+      writeConsumedLevelUpEvent(levelUpEventKey);
+      setAnimatedProgressLevel(previousProgress.level);
+      setAnimatedProgressPercent(previousProgress.percent);
+      setProgressAnimationPhase("fill");
+      playAchievementXpSound(audioEnabled);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setAnimatedProgressPercent(100));
+      });
+      const transitionSoundId = window.setTimeout(() => {
+        playAchievementLevelTransitionSound(audioEnabled);
+        setAnimatedProgressLevel(progress.level);
+        setProgressAnimationPhase("reset");
+        setAnimatedProgressPercent(0);
+        window.setTimeout(() => {
+          setProgressAnimationPhase("grow");
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => setAnimatedProgressPercent(progress.percent));
+          });
+        }, 80);
+      }, ACHIEVEMENT_XP_BAR_ANIMATION_MS);
+      const resetAnimationId = window.setTimeout(() => {
+        setAnimationState((current) => ({ ...current, changedXp: false }));
+        setAnimatedProgressLevel(progress.level);
+        setAnimatedProgressPercent(progress.percent);
+        setProgressAnimationPhase("idle");
+      }, ACHIEVEMENT_XP_BAR_ANIMATION_MS * 2 + 240);
+      return () => {
+        window.clearTimeout(transitionSoundId);
+        window.clearTimeout(resetAnimationId);
+      };
+    }
+
+    setAnimatedProgressLevel(progress.level);
+    setAnimatedProgressPercent(progress.percent);
+    setProgressAnimationPhase("idle");
+  }, [allCardIds, attempts, audioEnabled, badges, hasAnyAchievement, loading, progress]);
 
   return (
     <section className="rounded-md border border-line bg-white shadow-panel">
       <div className="border-b border-line px-6 py-4">
         <h2 className="text-lg font-semibold">Achievements</h2>
         <p className="mt-1 text-sm text-muted">
-          Score cards from completed local practice results.
+          Badges, XP, and score cards from completed local practice results.
         </p>
       </div>
 
       {loading ? <div className="p-6 text-sm text-muted">Loading achievements...</div> : null}
 
-      {!loading && getTotalCardCount(groups) === 0 ? (
+      {!loading && !hasAnyAchievement ? (
         <div className="p-8 text-center text-sm text-muted">
-          Complete a practice session to unlock score cards.
+          Complete a practice session to unlock badges and score cards.
         </div>
       ) : null}
 
-      {!loading && getTotalCardCount(groups) > 0 ? (
-        <div className="achievement-groups">
-          {(["Total", "RW", "Math"] as AchievementCategory[]).map((category) => (
-            <AchievementStack
-              category={category}
-              expanded={expanded[category]}
-              items={groups[category]}
-              key={category}
-              onSelect={setSelectedAchievement}
-              onToggle={() =>
-                setExpanded((current) => ({
-                  ...current,
-                  [category]: !current[category]
-                }))
-              }
-            />
-          ))}
+      {!loading && hasAnyAchievement ? (
+        <div className="achievement-page-body">
+          <AchievementProgressPanel
+            animate={animationState.changedXp}
+            displayLevel={animatedProgressLevel ?? progress.level}
+            displayPercent={animatedProgressPercent ?? progress.percent}
+            phase={progressAnimationPhase}
+            progress={progress}
+          />
+          <BadgeStack
+            audioEnabled={audioEnabled}
+            badges={badges}
+            expanded={badgesExpanded}
+            newBadgeIds={animationState.newBadgeIds}
+            onSelect={setSelectedBadge}
+            onToggle={() => setBadgesExpanded((current) => !current)}
+          />
+          <div className="achievement-card-groups">
+            <div className="achievement-section-label">Cards</div>
+            {(["Total", "RW", "Math"] as AchievementCategory[]).map((category) => (
+              <AchievementStack
+                audioEnabled={audioEnabled}
+                category={category}
+                expanded={expanded[category]}
+                items={groups[category]}
+                key={category}
+                newCardIds={animationState.newCardIds}
+                onSelect={setSelectedAchievement}
+                scoreCardName={scoreCardName}
+                onToggle={() =>
+                  setExpanded((current) => ({
+                    ...current,
+                    [category]: !current[category]
+                  }))
+                }
+              />
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -160,9 +520,30 @@ export function AchievementsPage() {
               ×
             </button>
             <div className="achievement-card-modal-wrap">
-              <AchievementCard enlarged item={selectedAchievement} />
+              <AchievementCard enlarged item={selectedAchievement} scoreCardName={scoreCardName} />
             </div>
-            <AchievementShareWidget item={selectedAchievement} />
+            <AchievementShareWidget item={selectedAchievement} scoreCardName={scoreCardName} />
+          </div>
+        </div>
+      ) : null}
+
+      {selectedBadge ? (
+        <div
+          aria-modal="true"
+          className="achievement-modal-backdrop"
+          onClick={() => setSelectedBadge(null)}
+          role="dialog"
+        >
+          <div className="achievement-modal-content achievement-badge-modal-content" onClick={(event) => event.stopPropagation()}>
+            <button
+              aria-label="Close achievement badge"
+              className="achievement-modal-close"
+              onClick={() => setSelectedBadge(null)}
+              type="button"
+            >
+              ×
+            </button>
+            <BadgeCard badge={selectedBadge} enlarged motionLite={badgeMotionLite} />
           </div>
         </div>
       ) : null}
@@ -170,76 +551,133 @@ export function AchievementsPage() {
   );
 }
 
-function AchievementStack({
-  category,
-  expanded,
-  items,
-  onSelect,
-  onToggle
+function AchievementProgressPanel({
+  animate,
+  displayLevel,
+  displayPercent,
+  phase,
+  progress
 }: {
-  category: AchievementCategory;
-  expanded: boolean;
-  items: AchievementItem[];
-  onSelect: (item: AchievementItem) => void;
-  onToggle: () => void;
+  animate: boolean;
+  displayLevel: number;
+  displayPercent: number;
+  phase: "idle" | "fill" | "reset" | "grow";
+  progress: AchievementProgress;
 }) {
+  const tone = getProgressTone(displayLevel);
   return (
-    <section className="achievement-stack-panel">
-      <div className="achievement-stack-header">
-        <div>
-          <h3 className="achievement-stack-title">{CATEGORY_LABELS[category]} Cards</h3>
-          <p className="achievement-stack-subtitle">
-            {items.length} saved result{items.length === 1 ? "" : "s"}
-          </p>
-        </div>
-        <button
-          className="bg-teal-700 px-4 py-2 text-sm font-semibold text-white"
-          onClick={onToggle}
-          type="button"
-        >
-          {expanded ? "Revert" : "Expand"}
-        </button>
+    <section
+      className={`achievement-progress-panel achievement-progress-tone-${tone} achievement-progress-phase-${phase} ${
+        animate ? "is-updated" : ""
+      }`}
+    >
+      <div>
+        <div className="achievement-section-label">XP</div>
+        <div className="achievement-progress-title">Level {displayLevel}</div>
       </div>
-
-      {items.length === 0 ? (
-        <div className="achievement-empty">No completed {CATEGORY_LABELS[category]} score yet.</div>
-      ) : (
-        <div className="achievement-stack-stage">
-          <div className={`achievement-card-strip ${expanded ? "is-expanded" : "is-stacked"}`}>
-            {items.map((item) => (
-              <AchievementCard item={item} key={item.id} onSelect={onSelect} />
-            ))}
-          </div>
+      <div
+        className="achievement-progress-container"
+        aria-label={`Level ${displayLevel}, ${Math.round(displayPercent)}% to next level`}
+      >
+        <div className="achievement-progress-bar" style={{ width: `${displayPercent}%` }}>
+          <span className="achievement-progress-spark achievement-progress-spark-1" />
+          <span className="achievement-progress-spark achievement-progress-spark-2" />
+          <span className="achievement-progress-spark achievement-progress-spark-3" />
+          <span className="achievement-progress-spark achievement-progress-spark-4" />
+          <span className="achievement-progress-spark achievement-progress-spark-5" />
         </div>
-      )}
+        <div className="achievement-progress-text">{Math.round(displayPercent)}%</div>
+      </div>
+      <div className="achievement-progress-meta">
+        {progress.xp} XP · {progress.currentLevelXp}/{progress.nextLevelXp}
+      </div>
     </section>
   );
 }
 
-function AchievementCard({
+function BadgeStack({
+  audioEnabled,
+  badges,
+  expanded,
+  newBadgeIds,
+  onSelect,
+  onToggle
+}: {
+  audioEnabled: boolean;
+  badges: BadgeItem[];
+  expanded: boolean;
+  newBadgeIds: Set<string>;
+  onSelect: (badge: BadgeItem) => void;
+  onToggle: () => void;
+}) {
+  return (
+    <section className={`achievement-badge-panel ${expanded ? "is-expanded" : ""}`}>
+      <button className="achievement-strip-header" onClick={onToggle} type="button">
+        <span>
+          <span className="achievement-stack-title">Badges</span>
+          <span className="achievement-stack-subtitle">
+            {badges.length} unlocked badge{badges.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        <span className="achievement-strip-action">{expanded ? "Revert" : "Expand"}</span>
+      </button>
+      {expanded ? (
+        badges.length === 0 ? (
+          <div className="achievement-empty">No badges yet.</div>
+        ) : (
+          <div className="achievement-badge-grid">
+            {badges.map((badge) => (
+              <BadgeCard
+                audioEnabled={audioEnabled}
+                badge={badge}
+                isNew={newBadgeIds.has(badge.id)}
+                key={badge.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        )
+      ) : null}
+    </section>
+  );
+}
+
+function BadgeCard({
+  audioEnabled = true,
+  badge,
   enlarged = false,
-  item,
+  isNew = false,
+  motionLite = false,
   onSelect
 }: {
+  audioEnabled?: boolean;
+  badge: BadgeItem;
   enlarged?: boolean;
-  item: AchievementItem;
-  onSelect?: (item: AchievementItem) => void;
+  isNew?: boolean;
+  motionLite?: boolean;
+  onSelect?: (badge: BadgeItem) => void;
 }) {
-  const completed = formatCompletedAt(item.completedAt);
-  const trackerCells = Array.from({ length: 25 }, (_, index) => index + 1);
+  const valueLengthClass = badge.value.length >= 4 ? "achievement-badge-long-value" : "";
+  function selectBadge() {
+    if (!onSelect) return;
+    playAchievementClickSound(audioEnabled);
+    onSelect(badge);
+  }
 
   return (
     <div
-      className={`achievement-card-shell achievement-rank-${item.rank} noselect ${
-        enlarged ? "achievement-card-shell-enlarged" : ""
-      }`}
-      onClick={onSelect ? () => onSelect(item) : undefined}
+      className={`achievement-badge-card achievement-badge-${badge.tier} ${
+        enlarged ? "achievement-badge-card-enlarged" : ""
+      } ${isNew ? "achievement-badge-card-new" : ""} ${
+        motionLite ? "achievement-badge-motion-lite" : ""
+      } ${valueLengthClass}`}
+      onClick={onSelect ? selectBadge : undefined}
       onKeyDown={
         onSelect
           ? (event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                onSelect(item);
+                selectBadge();
               }
             }
           : undefined
@@ -247,6 +685,117 @@ function AchievementCard({
       role={onSelect ? "button" : undefined}
       tabIndex={onSelect ? 0 : undefined}
     >
+      <div className="achievement-badge-holo" aria-hidden="true">
+        <div className="achievement-badge-mid">
+          <div className="achievement-badge-face">
+            <span className="achievement-badge-value">{badge.value}</span>
+          </div>
+        </div>
+      </div>
+      <div className="achievement-badge-title">{badge.title}</div>
+    </div>
+  );
+}
+
+function AchievementStack({
+  audioEnabled,
+  category,
+  expanded,
+  items,
+  newCardIds,
+  onSelect,
+  scoreCardName,
+  onToggle
+}: {
+  audioEnabled: boolean;
+  category: AchievementCategory;
+  expanded: boolean;
+  items: AchievementItem[];
+  newCardIds: Set<string>;
+  onSelect: (item: AchievementItem) => void;
+  scoreCardName: string;
+  onToggle: () => void;
+}) {
+  return (
+    <section className={`achievement-stack-panel ${expanded ? "is-expanded" : ""}`}>
+      <button className="achievement-strip-header" onClick={onToggle} type="button">
+        <div>
+          <h3 className="achievement-stack-title">{CATEGORY_LABELS[category]} Cards</h3>
+          <p className="achievement-stack-subtitle">
+            {items.length} saved result{items.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <span className="achievement-strip-action">
+          {expanded ? "Revert" : "Expand"}
+        </span>
+      </button>
+
+      {expanded ? items.length === 0 ? (
+        <div className="achievement-empty">No completed {CATEGORY_LABELS[category]} score yet.</div>
+      ) : (
+        <div className="achievement-stack-stage">
+          <div className="achievement-card-strip is-expanded">
+            {items.map((item) => (
+              <AchievementCard
+                audioEnabled={audioEnabled}
+                isNew={newCardIds.has(item.id)}
+                item={item}
+                key={item.id}
+                onSelect={onSelect}
+                scoreCardName={scoreCardName}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function AchievementCard({
+  audioEnabled = true,
+  enlarged = false,
+  isNew = false,
+  item,
+  onSelect,
+  scoreCardName = ""
+}: {
+  audioEnabled?: boolean;
+  enlarged?: boolean;
+  isNew?: boolean;
+  item: AchievementItem;
+  onSelect?: (item: AchievementItem) => void;
+  scoreCardName?: string;
+}) {
+  const completed = formatCompletedAt(item.completedAt);
+  const trackerCells = Array.from({ length: 25 }, (_, index) => index + 1);
+  const displayName = scoreCardName.trim();
+  function selectCard() {
+    if (!onSelect) return;
+    playAchievementClickSound(audioEnabled);
+    onSelect(item);
+  }
+
+  return (
+    <div
+      className={`achievement-card-shell achievement-rank-${item.rank} noselect ${
+        enlarged ? "achievement-card-shell-enlarged" : ""
+      } ${isNew ? "achievement-card-shell-new" : ""}`}
+      onClick={onSelect ? selectCard : undefined}
+      onKeyDown={
+        onSelect
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                selectCard();
+              }
+            }
+          : undefined
+      }
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+    >
+      {enlarged ? <div className="achievement-card-background-glow" aria-hidden="true" /> : null}
       <div className="achievement-canvas">
         {trackerCells.map((cell) => (
           <div className={`achievement-tr-${cell}`} key={cell} />
@@ -254,6 +803,11 @@ function AchievementCard({
       </div>
       <div className="achievement-card">
         <div className="achievement-card-content">
+          {displayName ? (
+            <div className={`achievement-card-name ${displayName.length > 14 ? "achievement-card-name-long" : ""}`}>
+              {displayName}
+            </div>
+          ) : null}
           <div className="achievement-title">{CATEGORY_LABELS[item.category]}</div>
           <div className="achievement-score">{item.score}</div>
           <div className="achievement-meta">
@@ -299,13 +853,13 @@ function AchievementCard({
   );
 }
 
-function AchievementShareWidget({ item }: { item: AchievementItem }) {
+function AchievementShareWidget({ item, scoreCardName }: { item: AchievementItem; scoreCardName: string }) {
   const [downloadState, setDownloadState] = useState<"idle" | "saving" | "saved">("idle");
 
   async function handleDownload() {
     setDownloadState("saving");
     try {
-      await downloadAchievementImage(item);
+      await downloadAchievementImage(item, scoreCardName);
       setDownloadState("saved");
       window.setTimeout(() => setDownloadState("idle"), 1800);
     } catch {
@@ -430,6 +984,284 @@ function getTotalCardCount(groups: AchievementGroups): number {
   return groups.Total.length + groups.RW.length + groups.Math.length;
 }
 
+function getAllCardIds(groups: AchievementGroups): string[] {
+  return [...groups.Total, ...groups.RW, ...groups.Math].map((item) => item.id);
+}
+
+function getLatestCompletedAttemptId(attempts: AttemptSummary[]): number {
+  return attempts
+    .filter((attempt) => attempt.status === "completed")
+    .reduce((latest, attempt) => Math.max(latest, attempt.id), 0);
+}
+
+function buildProgressBeforeLatestAttempt(attempts: AttemptSummary[], latestAttemptId: number): AchievementProgress {
+  if (latestAttemptId <= 0) return buildProgress([]);
+  return buildProgress(attempts.filter((attempt) => attempt.id !== latestAttemptId));
+}
+
+function buildAchievementSnapshot(
+  progress: AchievementProgress,
+  badges: BadgeItem[],
+  cardIds: string[]
+): AchievementSnapshot {
+  return {
+    badgeIds: badges.map((badge) => badge.id),
+    cardIds,
+    xp: progress.xp,
+    level: progress.level,
+    percent: progress.percent
+  };
+}
+
+function getAchievementSnapshotKey(snapshot: AchievementSnapshot): string {
+  return [
+    snapshot.xp,
+    snapshot.level,
+    snapshot.percent,
+    snapshot.badgeIds.join(","),
+    snapshot.cardIds.join(",")
+  ].join("|");
+}
+
+function getLevelUpEventKey(
+  latestAttemptId: number,
+  previousProgress: AchievementProgress,
+  snapshot: AchievementSnapshot
+): string {
+  return [
+    latestAttemptId,
+    previousProgress.level,
+    snapshot.level,
+    snapshot.xp,
+    snapshot.cardIds.join(",")
+  ].join("|");
+}
+
+function hasConsumedLevelUpEvent(eventKey: string): boolean {
+  try {
+    return window.localStorage.getItem(ACHIEVEMENT_CONSUMED_LEVEL_UP_KEY) === eventKey;
+  } catch {
+    return false;
+  }
+}
+
+function writeConsumedLevelUpEvent(eventKey: string) {
+  try {
+    window.localStorage.setItem(ACHIEVEMENT_CONSUMED_LEVEL_UP_KEY, eventKey);
+  } catch {
+    // Level-up consumption is decorative; ignore storage failures.
+  }
+}
+
+function readAchievementLevelTracker(): AchievementLevelTracker | null {
+  try {
+    const raw = window.localStorage.getItem(ACHIEVEMENT_LEVEL_TRACKER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AchievementLevelTracker>;
+    if (
+      typeof parsed.latestAttemptId !== "number" ||
+      typeof parsed.level !== "number" ||
+      typeof parsed.percent !== "number"
+    ) {
+      return null;
+    }
+    return {
+      latestAttemptId: parsed.latestAttemptId,
+      level: parsed.level,
+      percent: parsed.percent
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeAchievementLevelTracker(tracker: AchievementLevelTracker) {
+  try {
+    window.localStorage.setItem(ACHIEVEMENT_LEVEL_TRACKER_KEY, JSON.stringify(tracker));
+  } catch {
+    // Level tracking is decorative; ignore storage failures.
+  }
+}
+
+function readAchievementSnapshot(): AchievementSnapshot | null {
+  try {
+    const raw = window.localStorage.getItem(ACHIEVEMENT_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AchievementSnapshot>;
+    if (
+      !Array.isArray(parsed.badgeIds) ||
+      !Array.isArray(parsed.cardIds) ||
+      typeof parsed.xp !== "number" ||
+      typeof parsed.level !== "number" ||
+      typeof parsed.percent !== "number"
+    ) {
+      return null;
+    }
+    return {
+      badgeIds: parsed.badgeIds.filter((id): id is string => typeof id === "string"),
+      cardIds: parsed.cardIds.filter((id): id is string => typeof id === "string"),
+      xp: parsed.xp,
+      level: parsed.level,
+      percent: parsed.percent
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeAchievementSnapshot(snapshot: AchievementSnapshot) {
+  try {
+    window.localStorage.setItem(ACHIEVEMENT_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Snapshot animation is decorative; ignore storage failures.
+  }
+}
+
+function buildProgress(attempts: AttemptSummary[]): AchievementProgress {
+  const completed = attempts.filter((attempt) => attempt.status === "completed");
+  const scoreXp = completed.reduce((total, attempt) => {
+    const score = attempt.practiceScore ?? attempt.rwScore ?? attempt.mathScore ?? 0;
+    return total + Math.max(0, Math.round(score / 10));
+  }, 0);
+  const xp = completed.length * 100 + scoreXp;
+  const level = Math.floor(xp / 500) + 1;
+  const currentLevelXp = xp % 500;
+  const nextLevelXp = 500;
+  return {
+    xp,
+    level,
+    currentLevelXp,
+    nextLevelXp,
+    percent: Math.min(100, Math.round((currentLevelXp / nextLevelXp) * 100))
+  };
+}
+
+function buildBadges(attempts: AttemptSummary[], scoreResults: ScoreResult[]): BadgeItem[] {
+  const completed = attempts.filter((attempt) => attempt.status === "completed");
+  const badges: BadgeItem[] = [];
+  const streak = calculateCurrentStreak(completed);
+  const mistakeRecoveries = completed.filter((attempt) => attempt.mode === "mistake_practice").length;
+  const progress = buildProgress(attempts);
+  const bestScore = getCombinedBestSectionScore(completed);
+
+  if (streak > 0) {
+    badges.push({
+      id: "streak",
+      title: "Streak",
+      value: String(streak),
+      tier: getTierByValue(streak, [3, 7, 14])
+    });
+  }
+
+  [1, 5, 10, 25].forEach((target, index) => {
+    if (mistakeRecoveries >= target) {
+      badges.push({
+        id: `mistake-recovery-${target}`,
+        title: `Mistake Recovery ${target}`,
+        value: String(target),
+        tier: (["blue", "yellow", "pink", "purple"] as BadgeTier[])[index]
+      });
+    }
+  });
+
+  getPerfectModules(scoreResults).forEach((module, index) => {
+    badges.push({
+      id: `perfect-${module}`,
+      title: `Perfect ${module}`,
+      value: "✓",
+      tier: (["yellow", "pink", "purple", "purple"] as BadgeTier[])[Math.min(index, 3)]
+    });
+  });
+
+  badges.push({
+    id: "level",
+    title: "Level",
+    value: String(progress.level),
+    tier: getTierByValue(progress.level, [3, 6, 10])
+  });
+
+  if (bestScore > 0) {
+    badges.push({
+      id: "best-score",
+      title: "My Best Score",
+      value: String(bestScore),
+      tier: getTierByValue(bestScore, [1200, 1400, 1500])
+    });
+  }
+
+  return badges;
+}
+
+function getCombinedBestSectionScore(attempts: AttemptSummary[]): number {
+  const bestRwScore = Math.max(
+    0,
+    ...attempts
+      .map((attempt) => attempt.rwScore)
+      .filter((score): score is number => score !== null && score !== undefined)
+  );
+  const bestMathScore = Math.max(
+    0,
+    ...attempts
+      .map((attempt) => attempt.mathScore)
+      .filter((score): score is number => score !== null && score !== undefined)
+  );
+  return bestRwScore + bestMathScore;
+}
+
+function calculateCurrentStreak(attempts: AttemptSummary[]): number {
+  const completedDays = Array.from(
+    new Set(
+      attempts
+        .filter((attempt) => attempt.status === "completed")
+        .map((attempt) => toLocalDateKey(attempt.completedAt ?? attempt.startedAt))
+    )
+  ).sort((a, b) => (a > b ? -1 : 1));
+  if (completedDays.length === 0) return 0;
+
+  let streak = 0;
+  let cursor = new Date(`${completedDays[0]}T00:00:00`);
+  for (const day of completedDays) {
+    const expected = toLocalDateKey(cursor.toISOString());
+    if (day !== expected) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function toLocalDateKey(value: string): string {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getPerfectModules(results: ScoreResult[]): string[] {
+  const labels = new Set<string>();
+  results.forEach((result) => {
+    result.moduleBreakdown
+      .filter((row) => isPerfectBreakdown(row))
+      .forEach((row) => labels.add(row.label));
+  });
+  return Array.from(labels);
+}
+
+function isPerfectBreakdown(row: BreakdownRow): boolean {
+  return row.total > 0 && row.correct === row.total;
+}
+
+function getTierByValue(value: number, thresholds: [number, number, number]): BadgeTier {
+  if (value >= thresholds[2]) return "purple";
+  if (value >= thresholds[1]) return "pink";
+  if (value >= thresholds[0]) return "yellow";
+  return "blue";
+}
+
+function getProgressTone(level: number): BadgeTier {
+  return getTierByValue(level, [3, 6, 10]);
+}
+
 function formatCompletedAt(value: string): { year: string; date: string; time: string } {
   const date = new Date(value);
   return {
@@ -439,8 +1271,8 @@ function formatCompletedAt(value: string): { year: string; date: string; time: s
   };
 }
 
-async function downloadAchievementImage(item: AchievementItem): Promise<void> {
-  const blob = await createAchievementImageBlob(item);
+async function downloadAchievementImage(item: AchievementItem, scoreCardName: string): Promise<void> {
+  const blob = await createAchievementImageBlob(item, scoreCardName);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -451,7 +1283,7 @@ async function downloadAchievementImage(item: AchievementItem): Promise<void> {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function createAchievementImageBlob(item: AchievementItem): Promise<Blob> {
+async function createAchievementImageBlob(item: AchievementItem, scoreCardName: string): Promise<Blob> {
   const canvas = document.createElement("canvas");
   const width = 900;
   const height = 1203;
@@ -464,6 +1296,7 @@ async function createAchievementImageBlob(item: AchievementItem): Promise<Blob> 
 
   const colors = RANK_COLORS[item.rank];
   const completed = formatCompletedAt(item.completedAt);
+  const displayName = scoreCardName.trim();
   const radius = 60;
   const inset = 24;
   const gradient = context.createLinearGradient(0, 0, width, height);
@@ -480,6 +1313,16 @@ async function createAchievementImageBlob(item: AchievementItem): Promise<Blob> 
   context.strokeStyle = colors.secondary;
   context.lineWidth = 6;
   drawCorners(context, inset + 38, inset + 38, width - inset * 2 - 76, height - inset * 2 - 76);
+
+  if (displayName) {
+    context.fillStyle = colors.text;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.shadowColor = "rgba(0,0,0,0.18)";
+    context.shadowBlur = 14;
+    context.font = getCanvasNameFont(context, displayName, 600);
+    drawWrappedText(context, displayName, width / 2, 206, 620, 46, 2);
+  }
 
   context.fillStyle = colors.text;
   context.textAlign = "center";
@@ -589,6 +1432,17 @@ function drawWrappedText(
     const suffix = index === maxLines - 1 && lines.length > maxLines ? "..." : "";
     context.fillText(`${line}${suffix}`, x, y + index * lineHeight);
   });
+}
+
+function getCanvasNameFont(context: CanvasRenderingContext2D, name: string, maxWidth: number): string {
+  for (let size = 48; size >= 30; size -= 2) {
+    const font = `900 ${size}px Inter, system-ui, sans-serif`;
+    context.font = font;
+    if (context.measureText(name).width <= maxWidth) {
+      return font;
+    }
+  }
+  return "900 30px Inter, system-ui, sans-serif";
 }
 
 function DownloadIcon() {

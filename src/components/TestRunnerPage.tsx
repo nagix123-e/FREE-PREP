@@ -22,7 +22,15 @@ import { TestNavigation } from "./test/TestNavigation";
 import { TimerBar } from "./test/TimerBar";
 
 export function TestRunnerPage() {
-  const { selectedAttemptId, selectedSetId, navigate, setDbError } = useAppStore();
+  const {
+    selectedAttemptId,
+    selectedSetId,
+    navigate,
+    setDbError,
+    tutorial,
+    setTutorialStep,
+    recordTutorialHistory
+  } = useAppStore();
   const attempt = useTestSessionStore((state) => state.attempt);
   const moduleIndex = useTestSessionStore((state) => state.moduleIndex);
   const questionIndex = useTestSessionStore((state) => state.questionIndex);
@@ -143,6 +151,57 @@ export function TestRunnerPage() {
     setPaused(true);
   }
 
+  async function handleTutorialPauseExit() {
+    const activeAttemptId = attempt?.id;
+    if (tutorial.active && tutorial.step === "pause_exit" && activeAttemptId && tutorial.practiceSessionId === activeAttemptId) {
+      recordTutorialHistory(activeAttemptId);
+      setTutorialStep("score_history_delete");
+    }
+    navigate("home");
+  }
+
+  async function handleSelectAnswer(answer: string) {
+    if (!currentQuestion) return;
+    await selectAnswer(currentQuestion, answer);
+    if (
+      tutorial.active &&
+      tutorial.step === "answer_one_rw" &&
+      tutorial.practiceSessionId === attempt?.id &&
+      currentQuestion.section === "RW"
+    ) {
+      setTutorialStep("mark_review");
+    }
+  }
+
+  function handleOpenShortcuts() {
+    setShortcutsOpen(true);
+    if (tutorial.active && tutorial.step === "shortcuts" && tutorial.practiceSessionId === attempt?.id) {
+      setTutorialStep("pause_exit");
+    }
+  }
+
+  function handleTutorialMark() {
+    if (!currentQuestion) return;
+    void toggleMarked(currentQuestion);
+    if (tutorial.active && tutorial.step === "mark_review" && tutorial.practiceSessionId === attempt?.id) {
+      setTutorialStep("notes");
+    }
+  }
+
+  function handleOpenNotes() {
+    setNotesOpen(true);
+    if (tutorial.active && tutorial.step === "notes" && tutorial.practiceSessionId === attempt?.id) {
+      setTutorialStep("shortcuts");
+    }
+  }
+
+  async function handleTutorialHighlight(color: "yellow" | "blue" | "pink") {
+    await handleHighlight(color);
+    if (tutorial.active && tutorial.step === "highlight" && tutorial.practiceSessionId === attempt?.id) {
+      setTutorialStep("answer_one_rw");
+    }
+  }
+
   async function handleHighlight(color: "yellow" | "blue" | "pink") {
     if (!attempt || !currentQuestion?.id) return;
     const selection = window.getSelection();
@@ -227,12 +286,15 @@ export function TestRunnerPage() {
             onToggleHidden={() => setTimerHidden(!timerHidden)}
             remainingTimeSec={remainingTimeSec}
           />
-          <HighlightToolbar onHighlight={(color) => void handleHighlight(color)} />
+          <div className={tutorial.active && tutorial.step === "highlight" ? "tutorial-active-target tutorial-inline-target tutorial-target-ring" : ""}>
+            <HighlightToolbar onHighlight={(color) => void handleTutorialHighlight(color)} />
+          </div>
           <MarkForReviewButton
+            className={tutorial.active && tutorial.step === "mark_review" ? "tutorial-active-target tutorial-target-ring" : ""}
             marked={Boolean(currentResponse?.marked)}
-            onToggle={() => void toggleMarked(currentQuestion)}
+            onToggle={handleTutorialMark}
           />
-          <button className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => setNotesOpen(true)} type="button">
+          <button className={`rounded-md border border-line px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${tutorial.active && tutorial.step === "notes" ? "tutorial-active-target tutorial-target-ring" : ""}`} onClick={handleOpenNotes} type="button">
             Notes
           </button>
           {currentQuestion.section === "MATH" ? (
@@ -245,11 +307,11 @@ export function TestRunnerPage() {
               </button>
             </>
           ) : null}
-          <button className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => setShortcutsOpen(true)} type="button">
+          <button className={`rounded-md border border-line px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${tutorial.active && tutorial.step === "shortcuts" ? "tutorial-active-target tutorial-target-ring" : ""}`} onClick={handleOpenShortcuts} type="button">
             Shortcuts
           </button>
           <button
-            className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className={`rounded-md border border-line px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${tutorial.active && tutorial.step === "pause_exit" ? "tutorial-active-target tutorial-target-ring" : ""}`}
             onClick={() => void handlePause()}
             type="button"
           >
@@ -260,13 +322,15 @@ export function TestRunnerPage() {
 
       <div className="test-runner-grid grid min-h-0 flex-1 border-x border-line bg-white">
         <PassagePanel question={currentQuestion} />
+        <div className={`h-full min-h-0 ${tutorial.active && tutorial.step === "answer_one_rw" ? "tutorial-active-target tutorial-target-ring test-question-target" : ""}`}>
         <QuestionPanel
-          onSelectAnswer={(answer) => void selectAnswer(currentQuestion, answer)}
+          onSelectAnswer={(answer) => void handleSelectAnswer(answer)}
           onStudentResponse={(answer) => void setStudentResponse(currentQuestion, answer)}
           onToggleEliminated={(choice) => void toggleEliminatedChoice(currentQuestion, choice)}
           question={currentQuestion}
           response={currentResponse}
         />
+        </div>
       </div>
 
       <TestNavigation
@@ -292,7 +356,8 @@ export function TestRunnerPage() {
       ) : null}
       {paused ? (
         <PauseDialog
-          onExit={() => navigate("home")}
+          exitButtonClassName={tutorial.active && tutorial.step === "pause_exit" ? "tutorial-active-target tutorial-target-ring" : ""}
+          onExit={() => void handleTutorialPauseExit()}
           onResume={() => setPaused(false)}
         />
       ) : null}

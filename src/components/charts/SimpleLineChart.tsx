@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export interface LineSeries {
   key: string;
   label: string;
@@ -16,6 +18,13 @@ export function SimpleLineChart({
   series: LineSeries[];
   xLabels: string[];
 }) {
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    color: string;
+    label: string;
+    value: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const width = 640;
   const height = 220;
   const padding = 32;
@@ -65,6 +74,13 @@ export function SimpleLineChart({
     return <p className="py-10 text-sm text-muted">No score data for this selection yet.</p>;
   }
 
+  const tooltipWidth = hoveredPoint ? Math.max(62, hoveredPoint.value.toString().length * 7 + 44) : 0;
+  const tooltipHeight = 22;
+  const tooltipX = hoveredPoint
+    ? Math.min(width - padding - tooltipWidth, Math.max(padding, hoveredPoint.x - tooltipWidth / 2))
+    : 0;
+  const tooltipY = hoveredPoint ? Math.max(8, hoveredPoint.y - tooltipHeight - 10) : 0;
+
   return (
     <div className="overflow-auto">
       <svg aria-label="Trend chart" className="w-full" viewBox={`0 0 ${width} ${height}`} role="img">
@@ -87,11 +103,50 @@ export function SimpleLineChart({
               ))}
               {item.points.map((dataPoint) => {
                 const { x, y } = point(dataPoint.value, dataPoint.index, item.values.length);
-                return <circle cx={x} cy={y} fill={item.color} key={`${item.key}-${dataPoint.index}`} r="4" />;
+                return (
+                  <circle
+                    aria-label={`${item.label}: ${dataPoint.value}`}
+                    className="score-trend-dot"
+                    cx={x}
+                    cy={y}
+                    fill={item.color}
+                    key={`${item.key}-${dataPoint.index}`}
+                    onBlur={() => setHoveredPoint(null)}
+                    onFocus={() => setHoveredPoint({ color: item.color, label: item.label, value: dataPoint.value, x, y })}
+                    onMouseEnter={() => setHoveredPoint({ color: item.color, label: item.label, value: dataPoint.value, x, y })}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                    r="4"
+                    tabIndex={0}
+                  />
+                );
               })}
             </g>
           );
         })}
+        {hoveredPoint ? (
+          <g className="score-trend-tooltip" pointerEvents="none">
+            <rect
+              fill="#0f172a"
+              height={tooltipHeight}
+              opacity="0.94"
+              rx="11"
+              width={tooltipWidth}
+              x={tooltipX}
+              y={tooltipY}
+            />
+            <circle cx={tooltipX + 11} cy={tooltipY + tooltipHeight / 2} fill={hoveredPoint.color} r="3" />
+            <text
+              fill="#ffffff"
+              fontSize="10"
+              fontWeight="700"
+              textAnchor="middle"
+              x={tooltipX + tooltipWidth / 2 + 6}
+              y={tooltipY + 14}
+            >
+              {hoveredPoint.value}
+            </text>
+          </g>
+        ) : null}
         {xLabels.map((label, index) => {
           const x = padding + (xLabels.length <= 1 ? plotWidth / 2 : (index / (xLabels.length - 1)) * plotWidth);
           return <text fill="#64748b" fontSize="10" key={label + index} textAnchor="middle" x={x} y={height - 8}>{label}</text>;

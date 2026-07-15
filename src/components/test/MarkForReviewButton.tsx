@@ -1,7 +1,9 @@
 export function MarkForReviewButton({
+  className = "",
   marked,
   onToggle
 }: {
+  className?: string;
   marked: boolean;
   onToggle: () => void;
 }) {
@@ -11,7 +13,7 @@ export function MarkForReviewButton({
         marked
           ? "border-amber-300 bg-amber-50 text-amber-800"
           : "border-line bg-white text-slate-700 hover:bg-slate-50"
-      }`}
+      } ${className}`}
       onClick={onToggle}
       type="button"
     >

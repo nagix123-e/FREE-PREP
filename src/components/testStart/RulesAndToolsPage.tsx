@@ -1,7 +1,8 @@
 import { useAppStore } from "../../store/appStore";
 
 export function RulesAndToolsPage() {
-  const { navigate, selectedSetId } = useAppStore();
+  const { navigate, selectedSetId, tutorial, setTutorialStep } = useAppStore();
+  const isTutorialTarget = tutorial.active && tutorial.step === "rules_continue";
   return (
     <section className="safe-card-padding-lg mx-auto max-w-4xl rounded-md border border-line bg-white p-8 shadow-panel">
       <h2 className="text-2xl font-semibold">Rules and Tools</h2>
@@ -19,7 +20,18 @@ export function RulesAndToolsPage() {
       </div>
       <div className="mt-6 flex justify-between">
         <button className="rounded-md border border-line px-4 py-2 text-sm font-semibold" onClick={() => navigate("testOverview", selectedSetId ?? undefined)} type="button">Back</button>
-        <button className="rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white" onClick={() => navigate("deviceCheck", selectedSetId ?? undefined)} type="button">Continue</button>
+        <button
+          className={`rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white ${
+            isTutorialTarget ? "tutorial-active-target tutorial-target-ring" : ""
+          }`}
+          onClick={() => {
+            if (isTutorialTarget) setTutorialStep("device_check_confirm");
+            navigate("deviceCheck", selectedSetId ?? undefined);
+          }}
+          type="button"
+        >
+          Continue
+        </button>
       </div>
     </section>
   );

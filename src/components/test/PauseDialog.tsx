@@ -1,12 +1,14 @@
 export function PauseDialog({
+  exitButtonClassName = "",
   onResume,
   onExit
 }: {
+  exitButtonClassName?: string;
   onResume: () => void;
   onExit: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40">
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-950/40">
       <div className="pause-dialog-panel rounded-md border border-line bg-white p-6 shadow-xl">
         <h2 className="text-xl font-semibold">Practice Paused</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -14,7 +16,7 @@ export function PauseDialog({
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <button
-            className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className={`rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${exitButtonClassName}`}
             onClick={onExit}
             type="button"
           >

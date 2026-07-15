@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HomeScreen } from "./components/HomeScreen";
 import { DashboardPage } from "./components/DashboardPage";
 import { ImportScreen } from "./components/ImportScreen";
+import { MarketplacePage } from "./components/MarketplacePage";
 import { ModuleReviewPage } from "./components/ModuleReviewPage";
 import { PreviewScreen } from "./components/PreviewScreen";
 import { QuestionSetsScreen } from "./components/QuestionSetsScreen";
@@ -15,6 +16,7 @@ import { SettingsScreen } from "./components/SettingsScreen";
 import { TestRunnerPage } from "./components/TestRunnerPage";
 import { TestSetupPage } from "./components/TestSetupPage";
 import { StatisticsPage } from "./components/StatisticsPage";
+import { TeacherBuilderPage } from "./components/TeacherBuilderPage";
 import { AppLoadingScreen } from "./components/ui/AppLoadingScreen";
 import { Shuffle } from "./components/ui/Shuffle";
 import { PracticeSetupPage } from "./components/practice/PracticeSetupPage";
@@ -29,6 +31,7 @@ import type { RouteKey } from "./types";
 const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
   { route: "home", label: "Home" },
   { route: "dashboard", label: "Dashboard" },
+  { route: "marketplace", label: "Marketplace" },
   { route: "import", label: "Import CSV" },
   { route: "sets", label: "Question Sets" },
   { route: "history", label: "Score History" },
@@ -43,7 +46,18 @@ const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
 const MIN_LOADING_MS = 1200;
 
 export default function App() {
-  const { route, navigate, questionSets, setQuestionSets, dbError, setDbError } = useAppStore();
+  const {
+    route,
+    navigate,
+    questionSets,
+    setQuestionSets,
+    dbError,
+    setDbError,
+    tutorial,
+    startTutorial,
+    exitTutorial,
+    setTutorialStep
+  } = useAppStore();
   const [bootLoading, setBootLoading] = useState(true);
 
   useEffect(() => {
@@ -62,15 +76,34 @@ export default function App() {
       });
   }, [setDbError, setQuestionSets]);
 
+  useEffect(() => {
+    if (!tutorial.active) return;
+    if (tutorial.step === "home" && route === "dashboard") setTutorialStep("dashboard");
+    if (tutorial.step === "dashboard" && route === "import") setTutorialStep("import_csv");
+  }, [route, setTutorialStep, tutorial.active, tutorial.step]);
+
   if (bootLoading) {
     return <AppLoadingScreen />;
   }
 
   if (route === "test") {
-    return <TestRunnerPage />;
+    return (
+      <>
+        {tutorial.active ? (
+          <>
+            <div className="tutorial-block-layer" aria-hidden="true" />
+            <TutorialBanner onExit={exitTutorial} />
+          </>
+        ) : null}
+        <TestRunnerPage />
+      </>
+    );
   }
   if (route === "practiceRunner") {
     return <PracticeRunnerPage />;
+  }
+  if (route === "teacherBuilder") {
+    return <TeacherBuilderPage />;
   }
 
   return (
@@ -122,7 +155,7 @@ export default function App() {
                   route === item.route
                     ? "bg-teal-50 text-teal-700"
                     : "text-slate-600 hover:bg-slate-100 hover:text-ink"
-                }`}
+                } ${tutorialNavTargetClass(tutorial, item.route)}`}
                 key={item.route}
                 onClick={() => navigate(item.route)}
                 type="button"
@@ -146,8 +179,33 @@ export default function App() {
                 <h1 className="text-xl font-semibold">{titleForRoute(route)}</h1>
                 <p className="mt-1 text-sm text-muted">Practice Score and Estimated Score only.</p>
               </div>
+              {route === "home" ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={startTutorial}
+                    type="button"
+                  >
+                    Tutorial
+                  </button>
+                  <button
+                    className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={() => navigate("teacherBuilder")}
+                    type="button"
+                  >
+                    Question Maker Console
+                  </button>
+                </div>
+              ) : null}
             </div>
           </header>
+
+          {tutorial.active ? (
+            <>
+              <div className="tutorial-block-layer" aria-hidden="true" />
+              <TutorialBanner onExit={exitTutorial} />
+            </>
+          ) : null}
 
           {dbError ? (
             <div className="mx-8 mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
@@ -158,6 +216,7 @@ export default function App() {
           <div className="app-content-shell px-8 py-8">
             {route === "home" ? <HomeScreen /> : null}
             {route === "dashboard" ? <DashboardPage /> : null}
+            {route === "marketplace" ? <MarketplacePage /> : null}
             {route === "import" ? <ImportScreen /> : null}
             {route === "sets" ? <QuestionSetsScreen /> : null}
             {route === "preview" ? <PreviewScreen /> : null}
@@ -184,9 +243,107 @@ export default function App() {
   );
 }
 
+function TutorialBanner({ onExit }: { onExit: () => void }) {
+  const tutorial = useAppStore((state) => state.tutorial);
+  const stepOrder: Array<typeof tutorial.step> = [
+    "home",
+    "dashboard",
+    "import_csv",
+    "question_sets",
+    "test_overview_continue",
+    "rules_continue",
+    "device_check_confirm",
+    "device_check_start",
+    "setup_start",
+    "highlight",
+    "answer_one_rw",
+    "mark_review",
+    "notes",
+    "shortcuts",
+    "pause_exit",
+    "score_history_delete",
+    "teacher_set_type",
+    "teacher_test_id",
+    "teacher_question",
+    "teacher_choice_a",
+    "teacher_choice_b",
+    "teacher_correct_answer",
+    "teacher_explanation",
+    "teacher_content_domain",
+    "teacher_download",
+    "teacher_done",
+    "done"
+  ];
+  const stepIndex = Math.max(0, stepOrder.indexOf(tutorial.step));
+  return (
+    <div className="tutorial-banner mx-8 mt-6 rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold">Tutorial Mode · Step {stepIndex + 1}/{stepOrder.length}</div>
+          <div className="mt-1">{tutorialInstruction(tutorial.step)}</div>
+        </div>
+        <button
+          className="rounded-md border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-100"
+          onClick={onExit}
+          type="button"
+        >
+          Exit Tutorial
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function tutorialInstruction(step: ReturnType<typeof useAppStore.getState>["tutorial"]["step"]): string {
+  const text = {
+    home: "This is Home. Click Dashboard to see your practice overview.",
+    dashboard: "This is Dashboard. Next, go to Import CSV.",
+    import_csv: "Import a valid SAT CSV file, then save it.",
+    question_sets: "Find the set you imported and start RW practice.",
+    test_overview_continue: "Press Continue to move through the test overview.",
+    rules_continue: "Press Continue after reviewing the rules and tools.",
+    device_check_confirm: "Confirm the local device check.",
+    device_check_start: "Press Start Module.",
+    setup_start: "Start RW practice.",
+    highlight: "Press Highlight.",
+    answer_one_rw: "Answer one RW question.",
+    mark_review: "Press Mark for Review.",
+    notes: "Open Notes.",
+    shortcuts: "Open Shortcuts to see keyboard controls.",
+    pause_exit: "Open Pause, then click Exit to Home.",
+    score_history_delete: "Go to Score History and delete the tutorial practice history.",
+    teacher_set_type: "Choose the question set type.",
+    teacher_test_id: "Enter a Test ID.",
+    teacher_question: "Write the question prompt.",
+    teacher_choice_a: "Write choice A.",
+    teacher_choice_b: "Write choice B.",
+    teacher_correct_answer: "Choose the correct answer.",
+    teacher_explanation: "Write the explanation.",
+    teacher_content_domain: "Choose the content domain.",
+    teacher_download: "Download the CSV.",
+    teacher_done: "Question maker tutorial complete.",
+    done: "Tutorial complete."
+  };
+  return text[step];
+}
+
+function tutorialNavTargetClass(
+  tutorial: ReturnType<typeof useAppStore.getState>["tutorial"],
+  route: RouteKey
+): string {
+  if (!tutorial.active) return "";
+  if (tutorial.step === "home" && route === "dashboard") return "tutorial-active-target tutorial-target-ring";
+  if (tutorial.step === "dashboard" && route === "import") return "tutorial-active-target tutorial-target-ring";
+  if (tutorial.step === "question_sets" && route === "sets") return "tutorial-active-target tutorial-target-ring";
+  if (tutorial.step === "score_history_delete" && route === "history") return "tutorial-active-target tutorial-target-ring";
+  return "";
+}
+
 function titleForRoute(route: RouteKey): string {
   const titles: Record<RouteKey, string> = {
     home: "Home",
+    teacherBuilder: "Question Maker Console",
+    marketplace: "Marketplace",
     dashboard: "Dashboard",
     import: "Import CSV",
     sets: "Question Sets",

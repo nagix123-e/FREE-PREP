@@ -165,6 +165,7 @@ export interface QuestionSet {
   sourceFilename: string;
   rowCount: number;
   sectionCounts: Record<Section, number>;
+  hasAttempts: boolean;
 }
 
 export interface Attempt {
@@ -199,6 +200,8 @@ export interface AppSettings {
   timerDefaultVisible: boolean;
   defaultPracticeLength: number;
   fullscreenTestMode: boolean;
+  audioEnabled: boolean;
+  scoreCardName: string;
 }
 
 export interface HighlightRecord {
@@ -328,6 +331,8 @@ export interface ValidationSummary {
 
 export type RouteKey =
   | "home"
+  | "teacherBuilder"
+  | "marketplace"
   | "import"
   | "sets"
   | "preview"
