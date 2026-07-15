@@ -279,9 +279,6 @@ export function MarketplacePage() {
         <p className="mt-4 text-sm leading-6 text-slate-600">
           No account, card, or payment provider is used. The selected CSV is fetched and inserted into local SQLite.
         </p>
-        <div className="mt-4 rounded-md bg-teal-50 p-3 text-xs font-bold uppercase text-teal-700">
-          Source: {manifestSource === "remote" ? "GitHub" : "Bundled local fallback"}
-        </div>
         <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm">
           <div className="text-xs font-bold uppercase text-slate-500">Selected bundles</div>
           <div className="mt-2 text-2xl font-black">{selectedBundles.length}</div>
