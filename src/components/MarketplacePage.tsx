@@ -26,21 +26,23 @@ type ImportState = {
   status: "idle" | "loading" | "done" | "error";
 };
 
+const MARKETPLACE_REMOTE_ROOT = "https://raw.githubusercontent.com/nagix123-e/SAT-PREP/main";
+const MARKETPLACE_REMOTE_MANIFEST_URL = `${MARKETPLACE_REMOTE_ROOT}/public/marketplace/manifest.json`;
+const MARKETPLACE_LOCAL_MANIFEST_URL = "/marketplace/manifest.json";
+
 export function MarketplacePage() {
   const { navigate, setDbError, setQuestionSets } = useAppStore();
   const [manifest, setManifest] = useState<MarketplaceManifest | null>(null);
+  const [manifestSource, setManifestSource] = useState<"local" | "remote">("local");
   const [selectedId, setSelectedId] = useState("");
   const [loadError, setLoadError] = useState("");
   const [importState, setImportState] = useState<ImportState>({ id: "", message: "", status: "idle" });
 
   useEffect(() => {
-    fetch("/marketplace/manifest.json")
-      .then((response) => {
-        if (!response.ok) throw new Error(`Could not load marketplace manifest (${response.status}).`);
-        return response.json() as Promise<MarketplaceManifest>;
-      })
-      .then((nextManifest) => {
+    loadMarketplaceManifest()
+      .then(({ manifest: nextManifest, source }) => {
         setManifest(nextManifest);
+        setManifestSource(source);
         setSelectedId(nextManifest.items[0]?.id ?? "");
         setLoadError("");
       })
@@ -58,7 +60,7 @@ export function MarketplacePage() {
   async function importMarketplaceItem(item: MarketplaceItem) {
     setImportState({ id: item.id, message: "Importing...", status: "loading" });
     try {
-      const response = await fetch(item.path);
+      const response = await fetch(resolveMarketplaceAssetPath(item.path, manifestSource));
       if (!response.ok) throw new Error(`Could not download ${item.filename} (${response.status}).`);
       const csvText = await response.text();
       const summary = parseCsvText(csvText);
@@ -142,10 +144,6 @@ export function MarketplacePage() {
                             <h4 className="csv-name-wrap mt-3 text-base font-semibold">{item.title}</h4>
                             <p className="csv-name-wrap mt-1 text-xs text-muted">{item.filename}</p>
                           </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-black text-ink">$0</div>
-                            <div className="text-xs font-semibold text-muted">Price</div>
-                          </div>
                         </div>
                         <p className="mt-4 text-sm leading-6 text-slate-600">{item.description}</p>
                       </button>
@@ -182,6 +180,9 @@ export function MarketplacePage() {
         <p className="mt-4 text-sm leading-6 text-slate-600">
           No account, card, or payment provider is used. The selected CSV is fetched and inserted into local SQLite.
         </p>
+        <div className="mt-4 rounded-md bg-teal-50 p-3 text-xs font-bold uppercase text-teal-700">
+          Source: {manifestSource === "remote" ? "GitHub" : "Bundled local fallback"}
+        </div>
         <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm">
           <div className="text-xs font-bold uppercase text-slate-500">Selected bundle</div>
           <div className="csv-name-wrap mt-2 font-semibold">{selectedItem?.title ?? "No bundle selected"}</div>
@@ -204,6 +205,32 @@ export function MarketplacePage() {
       </aside>
     </div>
   );
+}
+
+async function loadMarketplaceManifest(): Promise<{ manifest: MarketplaceManifest; source: "local" | "remote" }> {
+  try {
+    return {
+      manifest: await fetchMarketplaceManifest(MARKETPLACE_REMOTE_MANIFEST_URL),
+      source: "remote"
+    };
+  } catch {
+    return {
+      manifest: await fetchMarketplaceManifest(MARKETPLACE_LOCAL_MANIFEST_URL),
+      source: "local"
+    };
+  }
+}
+
+async function fetchMarketplaceManifest(url: string): Promise<MarketplaceManifest> {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Could not load marketplace manifest (${response.status}).`);
+  return response.json() as Promise<MarketplaceManifest>;
+}
+
+function resolveMarketplaceAssetPath(path: string, source: "local" | "remote"): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  if (source === "remote") return `${MARKETPLACE_REMOTE_ROOT}/public${path}`;
+  return path;
 }
 
 function groupMarketplaceItems(items: MarketplaceItem[]): Array<{ collection: string; items: MarketplaceItem[] }> {
