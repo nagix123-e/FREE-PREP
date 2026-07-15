@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getPackageTypeLabel, parseCsvText } from "../lib/csvValidation";
+import { parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import { useAppStore } from "../store/appStore";
 
@@ -35,6 +35,7 @@ export function MarketplacePage() {
   const [manifest, setManifest] = useState<MarketplaceManifest | null>(null);
   const [manifestSource, setManifestSource] = useState<"local" | "remote">("local");
   const [selectedId, setSelectedId] = useState("");
+  const [selectedBundleIds, setSelectedBundleIds] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState("");
   const [importState, setImportState] = useState<ImportState>({ id: "", message: "", status: "idle" });
 
@@ -44,6 +45,7 @@ export function MarketplacePage() {
         setManifest(nextManifest);
         setManifestSource(source);
         setSelectedId(nextManifest.items[0]?.id ?? "");
+        setSelectedBundleIds(new Set(nextManifest.items[0]?.id ? [nextManifest.items[0].id] : []));
         setLoadError("");
       })
       .catch((error: unknown) => {
@@ -55,29 +57,34 @@ export function MarketplacePage() {
 
   const items = manifest?.items ?? [];
   const selectedItem = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
+  const selectedBundles = items.filter((item) => selectedBundleIds.has(item.id));
   const groupedItems = useMemo(() => groupMarketplaceItems(items), [items]);
+
+  async function saveMarketplaceItem(item: MarketplaceItem) {
+    const response = await fetch(resolveMarketplaceAssetPath(item.path, manifestSource));
+    if (!response.ok) throw new Error(`Could not download ${item.filename} (${response.status}).`);
+    const csvText = await response.text();
+    const summary = parseCsvText(csvText);
+    if (!summary.valid) {
+      const firstError = summary.issues.find((issue) => issue.level === "error");
+      throw new Error(firstError?.message ?? "This bundle is not valid and cannot be imported.");
+    }
+    return saveQuestionSet({
+      name: item.title,
+      description: `${item.collection}. ${item.description}`,
+      questions: summary.questions,
+      status: summary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid",
+      packageType: summary.packageType ?? undefined,
+      sourceFilename: item.filename,
+      rowCount: summary.rowCount,
+      sectionCounts: summary.sectionCounts
+    });
+  }
 
   async function importMarketplaceItem(item: MarketplaceItem) {
     setImportState({ id: item.id, message: "Importing...", status: "loading" });
     try {
-      const response = await fetch(resolveMarketplaceAssetPath(item.path, manifestSource));
-      if (!response.ok) throw new Error(`Could not download ${item.filename} (${response.status}).`);
-      const csvText = await response.text();
-      const summary = parseCsvText(csvText);
-      if (!summary.valid) {
-        const firstError = summary.issues.find((issue) => issue.level === "error");
-        throw new Error(firstError?.message ?? "This bundle is not valid and cannot be imported.");
-      }
-      const saved = await saveQuestionSet({
-        name: item.title,
-        description: `${item.collection}. ${item.description}`,
-        questions: summary.questions,
-        status: summary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid",
-        packageType: summary.packageType ?? undefined,
-        sourceFilename: item.filename,
-        rowCount: summary.rowCount,
-        sectionCounts: summary.sectionCounts
-      });
+      const saved = await saveMarketplaceItem(item);
       const sets = await listQuestionSets();
       setQuestionSets(sets);
       setDbError(null);
@@ -88,6 +95,76 @@ export function MarketplacePage() {
       setImportState({ id: item.id, message, status: "error" });
       setDbError(message);
     }
+  }
+
+  async function importSelectedMarketplaceItems() {
+    if (selectedBundles.length === 0) return;
+
+    setImportState({
+      id: "batch",
+      message: `Importing 0/${selectedBundles.length} bundles...`,
+      status: "loading"
+    });
+    try {
+      let lastSavedId: number | undefined;
+      for (let index = 0; index < selectedBundles.length; index += 1) {
+        const item = selectedBundles[index];
+        setImportState({
+          id: "batch",
+          message: `Importing ${index + 1}/${selectedBundles.length}: ${item.title}`,
+          status: "loading"
+        });
+        const saved = await saveMarketplaceItem(item);
+        lastSavedId = saved.id;
+      }
+      const sets = await listQuestionSets();
+      setQuestionSets(sets);
+      setDbError(null);
+      setImportState({
+        id: "batch",
+        message: `Imported ${selectedBundles.length} bundles`,
+        status: "done"
+      });
+      if (lastSavedId) {
+        navigate("preview", lastSavedId);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not import selected marketplace bundles.";
+      setImportState({ id: "batch", message, status: "error" });
+      setDbError(message);
+    }
+  }
+
+  function toggleBundleSelection(item: MarketplaceItem) {
+    setSelectedId(item.id);
+    setSelectedBundleIds((current) => {
+      const next = new Set(current);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.add(item.id);
+      }
+      return next;
+    });
+  }
+
+  function selectBundleGroup(groupItems: MarketplaceItem[]) {
+    setSelectedBundleIds((current) => {
+      const next = new Set(current);
+      groupItems.forEach((item) => next.add(item.id));
+      return next;
+    });
+    if (groupItems[0]) {
+      setSelectedId(groupItems[0].id);
+    }
+  }
+
+  function clearBundleGroup(groupItems: MarketplaceItem[]) {
+    setSelectedBundleIds((current) => {
+      const next = new Set(current);
+      groupItems.forEach((item) => next.delete(item.id));
+      return next;
+    });
   }
 
   return (
@@ -122,24 +199,46 @@ export function MarketplacePage() {
                   <h3 className="text-base font-semibold">{group.collection}</h3>
                   <p className="mt-1 text-xs text-muted">{group.items.length} free bundles</p>
                 </div>
-                <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700">$0</span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    className="rounded-md border border-line bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    onClick={() => selectBundleGroup(group.items)}
+                    type="button"
+                  >
+                    Select all
+                  </button>
+                  <button
+                    className="rounded-md border border-line bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    onClick={() => clearBundleGroup(group.items)}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                  <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700">$0</span>
+                </div>
               </div>
               <div className="marketplace-card-grid grid gap-4">
                 {group.items.map((item) => {
                   const isSelected = selectedItem?.id === item.id;
+                  const isChecked = selectedBundleIds.has(item.id);
                   const isImporting = importState.status === "loading" && importState.id === item.id;
                   return (
                     <article
                       className={`rounded-md border bg-white p-4 transition ${
-                        isSelected ? "border-teal-300 ring-2 ring-teal-100" : "border-line hover:border-teal-200"
+                        isChecked ? "border-teal-300 ring-2 ring-teal-100" : isSelected ? "border-sky-200 ring-2 ring-sky-100" : "border-line hover:border-teal-200"
                       }`}
                       key={item.id}
                     >
-                      <button className="block w-full text-left" onClick={() => setSelectedId(item.id)} type="button">
+                      <button className="block w-full text-left" onClick={() => toggleBundleSelection(item)} type="button">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
-                            <div className="inline-flex rounded-md bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">
-                              {item.source === "generated-and-audited" ? "AUDITED" : "PDF"}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex rounded-md bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">
+                                {item.source === "generated-and-audited" ? "AUDITED" : "PDF"}
+                              </span>
+                              <span className={`inline-flex rounded-md px-3 py-1 text-xs font-bold ${isChecked ? "bg-teal-700 text-white" : "bg-slate-100 text-slate-600"}`}>
+                                {isChecked ? "SELECTED" : "SELECT"}
+                              </span>
                             </div>
                             <h4 className="csv-name-wrap mt-3 text-base font-semibold">{item.title}</h4>
                             <p className="csv-name-wrap mt-1 text-xs text-muted">{item.filename}</p>
@@ -184,9 +283,20 @@ export function MarketplacePage() {
           Source: {manifestSource === "remote" ? "GitHub" : "Bundled local fallback"}
         </div>
         <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm">
-          <div className="text-xs font-bold uppercase text-slate-500">Selected bundle</div>
-          <div className="csv-name-wrap mt-2 font-semibold">{selectedItem?.title ?? "No bundle selected"}</div>
-          <div className="csv-name-wrap mt-1 text-xs text-muted">{selectedItem?.filename ?? ""}</div>
+          <div className="text-xs font-bold uppercase text-slate-500">Selected bundles</div>
+          <div className="mt-2 text-2xl font-black">{selectedBundles.length}</div>
+          {selectedBundles.length > 0 ? (
+            <div className="mt-3 max-h-48 space-y-2 overflow-auto pr-1">
+              {selectedBundles.map((item) => (
+                <div className="rounded-md border border-line bg-white px-3 py-2" key={item.id}>
+                  <div className="csv-name-wrap text-xs font-semibold">{item.title}</div>
+                  <div className="csv-name-wrap mt-1 text-[11px] text-muted">{item.filename}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 text-xs text-muted">Select any number of bundles from the marketplace.</div>
+          )}
         </div>
         <div className="mt-4 rounded-md bg-slate-50 p-4 text-sm">
           <div className="text-xs font-bold uppercase text-slate-500">Preview price</div>
@@ -195,12 +305,21 @@ export function MarketplacePage() {
         {selectedItem ? (
           <button
             className="mt-6 w-full rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={importState.status === "loading" && importState.id === selectedItem.id}
-            onClick={() => void importMarketplaceItem(selectedItem)}
+            disabled={selectedBundles.length === 0 || importState.status === "loading"}
+            onClick={() => void importSelectedMarketplaceItems()}
             type="button"
           >
-            Get selected for $0
+            Get {selectedBundles.length || ""} selected for $0
           </button>
+        ) : null}
+        {importState.id === "batch" && importState.message ? (
+          <div
+            className={`mt-3 text-xs font-semibold ${
+              importState.status === "error" ? "text-red-700" : "text-teal-700"
+            }`}
+          >
+            {importState.message}
+          </div>
         ) : null}
       </aside>
     </div>
