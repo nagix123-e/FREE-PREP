@@ -5,6 +5,7 @@ export type TutorialStep =
   | "home"
   | "dashboard"
   | "import_csv"
+  | "marketplace_add"
   | "question_sets"
   | "test_overview_continue"
   | "rules_continue"

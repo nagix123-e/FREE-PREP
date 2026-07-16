@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Papa from "papaparse";
 import { getPackageTypeLabel, parseCsvText } from "../lib/csvValidation";
+import {
+  listQuestionSets,
+  listQuestions,
+  listTeacherDrafts,
+  deleteTeacherDraft,
+  saveTeacherDraft,
+  updateQuestionSetQuestions,
+  type TeacherDraft
+} from "../lib/database";
 import { useAppStore, type TutorialStep } from "../store/appStore";
-import type { PackageType, QuestionType, Section, VisualType } from "../types";
+import type { PackageType, Question, QuestionSet, QuestionType, Section, VisualType } from "../types";
 import { VisualRenderer } from "./visual/VisualRenderer";
 
 type BuilderRow = Record<string, string>;
@@ -60,6 +69,7 @@ const MATH_VISUAL_OPTIONS: Array<[VisualType, string]> = [
 
 const CSV_HEADERS = [
   "test_id",
+  "preview_password",
   "exam_version",
   "generation_batch_id",
   "target_score_band",
@@ -119,12 +129,27 @@ const BLUEPRINTS: Record<
 };
 
 export function TeacherBuilderPage() {
-  const { navigate, tutorial, startTeacherTutorial, exitTutorial, setTutorialStep } = useAppStore();
+  const {
+    navigate,
+    tutorial,
+    startTeacherTutorial,
+    exitTutorial,
+    setTutorialStep,
+    questionSets,
+    setQuestionSets,
+    setDbError
+  } = useAppStore();
   const [packageType, setPackageType] = useState<PackageType>("rw_section");
   const [testId, setTestId] = useState("teacher-set-001");
+  const [previewPassword, setPreviewPassword] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [downloadState, setDownloadState] = useState<"idle" | "done">("idle");
-  const [rows, setRows] = useState<BuilderRow[]>(() => createRows("rw_section", "teacher-set-001"));
+  const [drafts, setDrafts] = useState<TeacherDraft[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState("");
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [editState, setEditState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [loadedSetId, setLoadedSetId] = useState<number | null>(null);
+  const [rows, setRows] = useState<BuilderRow[]>(() => createRows("rw_section", "teacher-set-001", ""));
 
   const csvText = useMemo(() => Papa.unparse(rows, { columns: CSV_HEADERS }), [rows]);
   const summary = useMemo(() => parseCsvText(csvText), [csvText]);
@@ -132,9 +157,14 @@ export function TeacherBuilderPage() {
   const completedCount = rows.filter(isContentReady).length;
   const teacherTutorialActive = tutorial.active && tutorial.step.startsWith("teacher_");
 
-  function rebuild(nextPackageType: PackageType, nextTestId = testId) {
-    setRows(createRows(nextPackageType, nextTestId));
+  useEffect(() => {
+    listTeacherDrafts().then(setDrafts).catch((error) => setDbError(error instanceof Error ? error.message : String(error)));
+  }, [setDbError]);
+
+  function rebuild(nextPackageType: PackageType, nextTestId = testId, nextPreviewPassword = previewPassword) {
+    setRows(createRows(nextPackageType, nextTestId, nextPreviewPassword));
     setActiveIndex(0);
+    setLoadedSetId(null);
   }
 
   function updateTestId(value: string) {
@@ -143,6 +173,12 @@ export function TeacherBuilderPage() {
     if (isTeacherStep(tutorial.step, "teacher_test_id") && value.trim()) {
       setTutorialStep("teacher_question");
     }
+  }
+
+  function updatePreviewPassword(value: string) {
+    const normalized = value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6);
+    setPreviewPassword(normalized);
+    setRows((current) => current.map((row) => ({ ...row, preview_password: normalized })));
   }
 
   function updateActive(field: string, value: string) {
@@ -204,6 +240,98 @@ export function TeacherBuilderPage() {
     rebuild(nextPackageType);
     if (isTeacherStep(tutorial.step, "teacher_set_type")) {
       setTutorialStep("teacher_test_id");
+    }
+  }
+
+  async function saveDraft() {
+    const draftId = `teacher-builder:${slugify(testId) || "untitled"}`;
+    setDraftState("saving");
+    try {
+      await saveTeacherDraft({
+        id: draftId,
+        name: testId.trim() || "Untitled question set",
+        data: { packageType, testId, previewPassword, activeIndex, rows }
+      });
+      setDrafts(await listTeacherDrafts());
+      setDraftState("saved");
+      window.setTimeout(() => setDraftState("idle"), 2200);
+    } catch (error) {
+      setDraftState("error");
+      setDbError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function loadDraft(draft: TeacherDraft) {
+    const data = draft.data as Partial<{
+      packageType: PackageType;
+      testId: string;
+      previewPassword: string;
+      activeIndex: number;
+      rows: BuilderRow[];
+    }>;
+    if (!data.rows || !Array.isArray(data.rows) || !data.testId || !data.packageType) {
+      setDbError("This saved draft is incomplete and cannot be opened.");
+      return;
+    }
+    setPackageType(data.packageType);
+    setTestId(data.testId);
+    setPreviewPassword(data.previewPassword ?? data.rows[0]?.preview_password ?? "");
+    setRows(data.rows);
+    setActiveIndex(Math.max(0, Math.min(data.activeIndex ?? 0, data.rows.length - 1)));
+    setLoadedSetId(null);
+  }
+
+  async function deleteDraft() {
+    const draft = drafts.find((item) => item.id === selectedDraftId);
+    if (!draft) return;
+    try {
+      await deleteTeacherDraft(draft.id);
+      setDrafts(await listTeacherDrafts());
+      setSelectedDraftId("");
+    } catch (error) {
+      setDbError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function loadQuestionSetForEditing(set: QuestionSet) {
+    try {
+      const questions = await listQuestions(set.id);
+      if (questions.length === 0) throw new Error("This question set has no editable questions.");
+      setPackageType(set.packageType);
+      setTestId(questions[0].testId || set.name);
+      setPreviewPassword(set.previewPassword);
+      setRows(questions.map((question) => questionToBuilderRow(question, set.previewPassword)));
+      setActiveIndex(0);
+      setLoadedSetId(set.id);
+      setEditState("idle");
+    } catch (error) {
+      setDbError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function saveImportedEdits() {
+    if (!loadedSetId) return;
+    if (!summary.valid) {
+      setEditState("error");
+      setDbError("Fix CSV validation issues before saving edits to this question set.");
+      return;
+    }
+    setEditState("saving");
+    try {
+      await updateQuestionSetQuestions({
+        questionSetId: loadedSetId,
+        questions: summary.questions,
+        status: "valid",
+        rowCount: summary.rowCount,
+        sectionCounts: summary.sectionCounts,
+        previewPassword: summary.previewPassword
+      });
+      setQuestionSets(await listQuestionSets());
+      setEditState("saved");
+      window.setTimeout(() => setEditState("idle"), 2200);
+    } catch (error) {
+      setEditState("error");
+      setDbError(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -283,7 +411,97 @@ export function TeacherBuilderPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-4 gap-4">
+        <div className="mt-5 grid gap-4 border-t border-line pt-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+          <div className="text-sm font-medium">
+            <div>Saved drafts</div>
+            <select
+              className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+              onChange={(event) => setSelectedDraftId(event.target.value)}
+              value={selectedDraftId}
+            >
+              <option value="">Choose a saved draft</option>
+              {drafts.map((draft) => (
+                <option key={draft.id} value={draft.id}>
+                  {draft.name}
+                </option>
+              ))}
+            </select>
+            <div className="mt-2 flex gap-2">
+              <button
+                className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                disabled={!selectedDraftId}
+                onClick={() => {
+                  const draft = drafts.find((item) => item.id === selectedDraftId);
+                  if (draft) loadDraft(draft);
+                }}
+                type="button"
+              >
+                Open draft
+              </button>
+              <button
+                className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                disabled={!selectedDraftId}
+                onClick={() => void deleteDraft()}
+                type="button"
+              >
+                Delete draft
+              </button>
+            </div>
+          </div>
+          <label className="text-sm font-medium">
+            Edit imported question set
+            <select
+              className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+              defaultValue=""
+              onChange={(event) => {
+                const set = questionSets.find((item) => String(item.id) === event.target.value);
+                if (set) void loadQuestionSetForEditing(set);
+                event.currentTarget.value = "";
+              }}
+            >
+              <option value="">Choose a local set to edit</option>
+              {questionSets.map((set) => (
+                <option disabled={set.hasAttempts} key={set.id} value={set.id}>
+                  {set.name}{set.hasAttempts ? " (has practice history)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="mt-7 rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+            disabled={draftState === "saving"}
+            onClick={() => void saveDraft()}
+            type="button"
+          >
+            {draftState === "saving" ? "Saving draft..." : draftState === "saved" ? "Draft saved" : "Save draft"}
+          </button>
+          <div className="mt-7 flex gap-3">
+            {loadedSetId ? (
+              <button
+                className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+                disabled={editState === "saving"}
+                onClick={() => void saveImportedEdits()}
+                type="button"
+              >
+                {editState === "saving" ? "Saving changes..." : editState === "saved" ? "Changes saved" : "Save changes"}
+              </button>
+            ) : (
+              <button
+                className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => rebuild(packageType)}
+                type="button"
+              >
+                New set
+              </button>
+            )}
+          </div>
+        </div>
+
+        {loadedSetId ? (
+          <div className="mt-3 text-xs font-semibold text-teal-700">Editing an imported local question set. Save changes to update it in place.</div>
+        ) : null}
+
+        <div className="mt-6 grid grid-cols-5 gap-4">
           <label className="text-sm font-medium">
             Set type
             <select
@@ -308,6 +526,16 @@ export function TeacherBuilderPage() {
               }`}
               onChange={(event) => updateTestId(event.target.value)}
               value={testId}
+            />
+          </label>
+          <label className="text-sm font-medium">
+            Preview password <span className="text-xs font-normal text-muted">optional, 6 letters/numbers</span>
+            <input
+              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-teal-600"
+              maxLength={6}
+              onChange={(event) => updatePreviewPassword(event.target.value)}
+              placeholder="A1B2C3"
+              value={previewPassword}
             />
           </label>
           <Metric label="Questions" value={`${rows.length}`} />
@@ -748,7 +976,50 @@ function VisualParameterControls({
   );
 }
 
-function createRows(packageType: PackageType, testId: string): BuilderRow[] {
+function questionToBuilderRow(question: Question, previewPassword: string): BuilderRow {
+  return {
+    test_id: question.testId,
+    preview_password: previewPassword,
+    exam_version: question.examVersion,
+    generation_batch_id: question.generationBatchId,
+    target_score_band: question.targetScoreBand,
+    question_id: question.questionId,
+    section: question.section,
+    module: String(question.module),
+    route: question.route,
+    question_number: String(question.questionNumber),
+    content_domain: question.contentDomain || question.domain,
+    skill_group: question.skillGroup || question.skill,
+    skill_code: question.skillCode,
+    skill_label: question.skillLabel,
+    question_topic: question.questionTopic,
+    difficulty: question.difficulty,
+    scoring_weight: String(question.scoringWeight),
+    question_type: question.questionType,
+    passage: question.passage,
+    question: question.question,
+    choice_a: question.choiceA,
+    choice_b: question.choiceB,
+    choice_c: question.choiceC,
+    choice_d: question.choiceD,
+    correct_answer: question.correctAnswer,
+    correct_choice_index: question.correctChoiceIndex === null ? "" : String(question.correctChoiceIndex),
+    explanation: question.explanation,
+    time_estimate_sec: question.timeEstimateSec === null ? "" : String(question.timeEstimateSec),
+    visual_type: question.visualType,
+    visual_json: question.visualJson,
+    table_markdown: question.tableMarkdown,
+    equation_latex: question.equationLatex,
+    student_response_type: question.studentResponseType,
+    correct_numeric_answer: question.correctNumericAnswer,
+    answer_tolerance: question.answerTolerance,
+    primary_skill: question.primarySkill,
+    secondary_skill: question.secondarySkill,
+    tags: question.tags
+  };
+}
+
+function createRows(packageType: PackageType, testId: string, previewPassword: string): BuilderRow[] {
   const batchId = `teacher-${new Date().toISOString().slice(0, 10)}`;
   return BLUEPRINTS[packageType].flatMap((group) =>
     Array.from({ length: group.count }, (_, index) => {
@@ -757,6 +1028,7 @@ function createRows(packageType: PackageType, testId: string): BuilderRow[] {
       const domain = getDefaultDomain(group.section, group.module, group.route, index);
       return {
         test_id: testId,
+        preview_password: previewPassword,
         exam_version: "teacher-draft",
         generation_batch_id: batchId,
         target_score_band: "practice",

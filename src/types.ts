@@ -102,6 +102,7 @@ export interface RawCsvQuestion {
   skill_code: string;
   skill_label: string;
   question_topic: string;
+  preview_password?: string;
   graph_json?: string;
   diagram_json?: string;
   image_definition?: string;
@@ -166,6 +167,7 @@ export interface QuestionSet {
   rowCount: number;
   sectionCounts: Record<Section, number>;
   hasAttempts: boolean;
+  previewPassword: string;
 }
 
 export interface Attempt {
@@ -327,6 +329,7 @@ export interface ValidationSummary {
   packageType: PackageType | null;
   rowCount: number;
   sectionCounts: Record<Section, number>;
+  previewPassword: string;
 }
 
 export type RouteKey =

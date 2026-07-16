@@ -3,6 +3,13 @@ import type { PackageType, Question, QuestionSet, Section, SetStatus } from "../
 
 const DB_URL = "sqlite:sat-practice-simulator.db";
 
+export interface TeacherDraft {
+  id: string;
+  name: string;
+  updatedAt: string;
+  data: unknown;
+}
+
 let dbPromise: Promise<Database> | null = null;
 
 export async function getDatabase(): Promise<Database> {
@@ -35,13 +42,23 @@ export async function initializeSchema(db: Database): Promise<void> {
       package_type TEXT NOT NULL DEFAULT 'full_test',
       source_filename TEXT NOT NULL DEFAULT '',
       row_count INTEGER NOT NULL DEFAULT 0,
-      section_counts TEXT NOT NULL DEFAULT ''
+      section_counts TEXT NOT NULL DEFAULT '',
+      preview_password TEXT NOT NULL DEFAULT ''
     )
   `);
   await ensureColumn(db, "question_sets", "package_type", "TEXT NOT NULL DEFAULT 'full_test'");
   await ensureColumn(db, "question_sets", "source_filename", "TEXT NOT NULL DEFAULT ''");
   await ensureColumn(db, "question_sets", "row_count", "INTEGER NOT NULL DEFAULT 0");
   await ensureColumn(db, "question_sets", "section_counts", "TEXT NOT NULL DEFAULT ''");
+  await ensureColumn(db, "question_sets", "preview_password", "TEXT NOT NULL DEFAULT ''");
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS teacher_drafts (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      data_json TEXT NOT NULL
+    )
+  `);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -275,6 +292,7 @@ export async function saveQuestionSet(input: {
   sourceFilename?: string;
   rowCount?: number;
   sectionCounts?: Record<Section, number>;
+  previewPassword?: string;
 }): Promise<QuestionSet> {
   const db = await getDatabase();
   const importedAt = new Date().toISOString();
@@ -287,9 +305,9 @@ export async function saveQuestionSet(input: {
     await db.execute(
       `INSERT INTO question_sets (
         id, name, description, imported_at, total_questions, status,
-        package_type, source_filename, row_count, section_counts
+        package_type, source_filename, row_count, section_counts, preview_password
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         questionSetId,
         input.name,
@@ -300,7 +318,8 @@ export async function saveQuestionSet(input: {
         packageType,
         input.sourceFilename ?? "",
         rowCount,
-        JSON.stringify(sectionCounts)
+        JSON.stringify(sectionCounts),
+        input.previewPassword ?? ""
       ]
     );
 
@@ -326,6 +345,7 @@ export async function saveQuestionSet(input: {
       sourceFilename: input.sourceFilename ?? "",
       rowCount,
       sectionCounts,
+      previewPassword: input.previewPassword ?? "",
       hasAttempts: false
     };
   } catch (error) {
@@ -346,7 +366,7 @@ export async function listQuestionSets(): Promise<QuestionSet[]> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
     `SELECT id, name, description, imported_at, total_questions, status,
-            package_type, source_filename, row_count, section_counts,
+            package_type, source_filename, row_count, section_counts, preview_password,
             EXISTS(SELECT 1 FROM attempts WHERE attempts.question_set_id = question_sets.id) AS has_attempts
      FROM question_sets
      ORDER BY imported_at DESC`
@@ -358,7 +378,8 @@ export async function getQuestionSet(id: number): Promise<QuestionSet | null> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
     `SELECT id, name, description, imported_at, total_questions, status,
-            package_type, source_filename, row_count, section_counts
+            package_type, source_filename, row_count, section_counts, preview_password,
+            EXISTS(SELECT 1 FROM attempts WHERE attempts.question_set_id = question_sets.id) AS has_attempts
      FROM question_sets
      WHERE id = $1`,
     [id]
@@ -472,6 +493,85 @@ export async function listQuestions(questionSetId: number): Promise<Question[]> 
   return rows.map(toQuestion);
 }
 
+export async function saveTeacherDraft(input: { id: string; name: string; data: unknown }): Promise<void> {
+  const db = await getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `INSERT INTO teacher_drafts (id, name, updated_at, data_json)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       updated_at = excluded.updated_at,
+       data_json = excluded.data_json`,
+    [input.id, input.name, updatedAt, JSON.stringify(input.data)]
+  );
+}
+
+export async function listTeacherDrafts(): Promise<TeacherDraft[]> {
+  const db = await getDatabase();
+  const rows = await db.select<Array<{ id: string; name: string; updated_at: string; data_json: string }>>(
+    "SELECT id, name, updated_at, data_json FROM teacher_drafts ORDER BY updated_at DESC"
+  );
+  return rows.flatMap((row) => {
+    try {
+      return [{ id: row.id, name: row.name, updatedAt: row.updated_at, data: JSON.parse(row.data_json) }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+export async function deleteTeacherDraft(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.execute("DELETE FROM teacher_drafts WHERE id = $1", [id]);
+}
+
+export async function updateQuestionSetQuestions(input: {
+  questionSetId: number;
+  questions: Question[];
+  status: SetStatus;
+  rowCount?: number;
+  sectionCounts?: Record<Section, number>;
+  previewPassword?: string;
+}): Promise<QuestionSet> {
+  const db = await getDatabase();
+  const set = await getQuestionSet(input.questionSetId);
+  if (!set) throw new Error("Question set could not be found.");
+  if (set.hasAttempts) {
+    throw new Error("This set has practice history and cannot be edited in place.");
+  }
+
+  const stored = await db.select<Array<{ question_id: string }>>(
+    "SELECT question_id FROM questions WHERE question_set_id = $1",
+    [input.questionSetId]
+  );
+  const storedIds = new Set(stored.map((row) => row.question_id));
+  const incomingIds = new Set(input.questions.map((question) => question.questionId));
+  if (storedIds.size !== incomingIds.size || [...storedIds].some((id) => !incomingIds.has(id))) {
+    throw new Error("Question IDs cannot be changed when editing an imported set.");
+  }
+
+  for (const question of input.questions) {
+    await updateQuestion(db, input.questionSetId, question);
+  }
+
+  const sectionCounts = input.sectionCounts ?? countSections(input.questions);
+  await db.execute(
+    `UPDATE question_sets
+     SET total_questions = $1, status = $2, row_count = $3, section_counts = $4, preview_password = $5
+     WHERE id = $6`,
+    [
+      input.questions.length,
+      input.status,
+      input.rowCount ?? input.questions.length,
+      JSON.stringify(sectionCounts),
+      input.previewPassword ?? set.previewPassword,
+      input.questionSetId
+    ]
+  );
+  return (await getQuestionSet(input.questionSetId))!;
+}
+
 export async function combineSectionQuestionSets(input: {
   rwSetId: number;
   mathSetId: number;
@@ -581,6 +681,65 @@ async function insertQuestion(db: Database, questionSetId: number, question: Que
       textValue(question.skillLabel),
       textValue(question.questionTopic),
       numberValue(question.scoringWeight, 1)
+    ]
+  );
+}
+
+async function updateQuestion(db: Database, questionSetId: number, question: Question): Promise<void> {
+  await db.execute(
+    `UPDATE questions SET
+      test_id = $1, exam_version = $2, generation_batch_id = $3, target_score_band = $4,
+      section = $5, module = $6, route = $7, question_number = $8,
+      domain = $9, skill = $10, difficulty = $11, question_type = $12, passage = $13,
+      question = $14, choice_a = $15, choice_b = $16, choice_c = $17, choice_d = $18,
+      correct_answer = $19, correct_choice_index = $20, explanation = $21, time_estimate_sec = $22,
+      visual_type = $23, visual_json = $24, table_markdown = $25, equation_latex = $26,
+      student_response_type = $27, correct_numeric_answer = $28, answer_tolerance = $29,
+      primary_skill = $30, secondary_skill = $31, tags = $32, content_domain = $33,
+      skill_group = $34, skill_code = $35, skill_label = $36, question_topic = $37,
+      scoring_weight = $38
+     WHERE question_set_id = $39 AND question_id = $40`,
+    [
+      textValue(question.testId),
+      textValue(question.examVersion),
+      textValue(question.generationBatchId),
+      textValue(question.targetScoreBand),
+      textValue(question.section),
+      numberValue(question.module, 1),
+      textValue(question.route),
+      numberValue(question.questionNumber, 0),
+      textValue(question.domain || question.contentDomain),
+      textValue(question.skill || question.skillGroup),
+      textValue(question.difficulty),
+      textValue(question.questionType),
+      textValue(question.passage),
+      textValue(question.question),
+      textValue(question.choiceA),
+      textValue(question.choiceB),
+      textValue(question.choiceC),
+      textValue(question.choiceD),
+      textValue(question.correctAnswer),
+      nullableNumberValue(question.correctChoiceIndex),
+      textValue(question.explanation),
+      nullableNumberValue(question.timeEstimateSec),
+      textValue(question.visualType || "none"),
+      textValue(question.visualJson),
+      textValue(question.tableMarkdown),
+      textValue(question.equationLatex),
+      textValue(question.studentResponseType),
+      textValue(question.correctNumericAnswer),
+      textValue(question.answerTolerance),
+      textValue(question.primarySkill),
+      textValue(question.secondarySkill),
+      textValue(question.tags),
+      textValue(question.contentDomain || question.domain),
+      textValue(question.skillGroup || question.skill),
+      textValue(question.skillCode),
+      textValue(question.skillLabel),
+      textValue(question.questionTopic),
+      numberValue(question.scoringWeight, 1),
+      questionSetId,
+      textValue(question.questionId)
     ]
   );
 }
@@ -740,6 +899,7 @@ interface QuestionSetRow {
   source_filename: string | null;
   row_count: number | null;
   section_counts: string | null;
+  preview_password: string | null;
   has_attempts?: number | boolean | string | null;
 }
 
@@ -805,7 +965,8 @@ function toQuestionSet(row: QuestionSetRow): QuestionSet {
     sourceFilename: row.source_filename ?? "",
     rowCount,
     sectionCounts,
-    hasAttempts: row.has_attempts === true || row.has_attempts === 1 || row.has_attempts === "1"
+    hasAttempts: row.has_attempts === true || row.has_attempts === 1 || row.has_attempts === "1",
+    previewPassword: row.preview_password ?? ""
   };
 }
 

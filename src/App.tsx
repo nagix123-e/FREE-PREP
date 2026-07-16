@@ -80,6 +80,7 @@ export default function App() {
     if (!tutorial.active) return;
     if (tutorial.step === "home" && route === "dashboard") setTutorialStep("dashboard");
     if (tutorial.step === "dashboard" && route === "import") setTutorialStep("import_csv");
+    if (tutorial.step === "import_csv" && route === "marketplace") setTutorialStep("marketplace_add");
   }, [route, setTutorialStep, tutorial.active, tutorial.step]);
 
   if (bootLoading) {
@@ -249,6 +250,7 @@ function TutorialBanner({ onExit }: { onExit: () => void }) {
     "home",
     "dashboard",
     "import_csv",
+    "marketplace_add",
     "question_sets",
     "test_overview_continue",
     "rules_continue",
@@ -298,7 +300,8 @@ function tutorialInstruction(step: ReturnType<typeof useAppStore.getState>["tuto
   const text = {
     home: "This is Home. Click Dashboard to see your practice overview.",
     dashboard: "This is Dashboard. Next, go to Import CSV.",
-    import_csv: "Import a valid SAT CSV file, then save it.",
+    import_csv: "This is Import CSV. Next, open Marketplace.",
+    marketplace_add: "Add the first marketplace question set directly to your local library.",
     question_sets: "Find the set you imported and start RW practice.",
     test_overview_continue: "Press Continue to move through the test overview.",
     rules_continue: "Press Continue after reviewing the rules and tools.",
@@ -334,6 +337,7 @@ function tutorialNavTargetClass(
   if (!tutorial.active) return "";
   if (tutorial.step === "home" && route === "dashboard") return "tutorial-active-target tutorial-target-ring";
   if (tutorial.step === "dashboard" && route === "import") return "tutorial-active-target tutorial-target-ring";
+  if (tutorial.step === "import_csv" && route === "marketplace") return "tutorial-active-target tutorial-target-ring";
   if (tutorial.step === "question_sets" && route === "sets") return "tutorial-active-target tutorial-target-ring";
   if (tutorial.step === "score_history_delete" && route === "history") return "tutorial-active-target tutorial-target-ring";
   return "";

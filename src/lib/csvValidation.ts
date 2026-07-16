@@ -120,6 +120,7 @@ export function parseCsvFile(file: File): Promise<ValidationSummary> {
           packageType: null,
           rowCount: 0,
           sectionCounts: emptySectionCounts(),
+          previewPassword: "",
           issues: [{ level: "error", message: `CSV parse error: ${error.message}` }]
         })
     });
@@ -163,6 +164,7 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
       packageType: null,
       rowCount: 0,
       sectionCounts: emptySectionCounts(),
+      previewPassword: "",
       issues
     };
   }
@@ -174,6 +176,15 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
   const contentDomainCounts: Record<string, number> = {};
   const skillGroupCounts: Record<string, number> = {};
   const sectionCounts = emptySectionCounts();
+  const previewPasswords = new Set(
+    result.data.map((row) => (row.preview_password ?? "").trim()).filter(Boolean)
+  );
+  const previewPassword = [...previewPasswords][0] ?? "";
+  if (previewPasswords.size > 1) {
+    issues.push({ level: "error", message: "preview_password must be the same for every row in a set." });
+  } else if (previewPassword && !/^[A-Za-z0-9]{6}$/.test(previewPassword)) {
+    issues.push({ level: "error", message: "preview_password must be exactly 6 letters and numbers." });
+  }
 
   result.data.forEach((row, index) => {
     const rowNumber = index + CSV_ROW_OFFSET;
@@ -222,6 +233,7 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
     packageType,
     rowCount: questions.length,
     sectionCounts,
+    previewPassword,
     issues
   };
 }
@@ -347,6 +359,7 @@ function normalizeRawCsvQuestion(row: Record<string, string>): RawCsvQuestion {
     skill_code: row.skill_code ?? "",
     skill_label: row.skill_label ?? "",
     question_topic: row.question_topic ?? "",
+    preview_password: row.preview_password ?? "",
     graph_json: row.graph_json,
     diagram_json: row.diagram_json,
     image_definition: row.image_definition,

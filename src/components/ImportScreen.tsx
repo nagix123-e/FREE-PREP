@@ -214,7 +214,8 @@ export function ImportScreen() {
         packageType: currentSummary.packageType ?? undefined,
         sourceFilename: activeItem.sourceFilename || currentFileName,
         rowCount: currentSummary.rowCount,
-        sectionCounts: currentSummary.sectionCounts
+        sectionCounts: currentSummary.sectionCounts,
+        previewPassword: currentSummary.previewPassword
       });
       const sets = await listQuestionSets();
       setQuestionSets(sets);

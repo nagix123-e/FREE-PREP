@@ -11,6 +11,9 @@ export function PreviewScreen() {
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
+  const [previewPassword, setPreviewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const selectedQuestion = useMemo(
     () => questions.find((question) => question.id === selectedQuestionId) ?? questions[0] ?? null,
     [questions, selectedQuestionId]
@@ -26,6 +29,9 @@ export function PreviewScreen() {
         setSet(nextSet);
         setQuestions(nextQuestions);
         setSelectedQuestionId(nextQuestions[0]?.id ?? null);
+        setPreviewPassword("");
+        setPasswordError("");
+        setIsUnlocked(false);
         setDbError(null);
       })
       .catch((error: unknown) =>
@@ -43,6 +49,41 @@ export function PreviewScreen() {
           type="button"
         >
           Open Question Sets
+        </button>
+      </section>
+    );
+  }
+
+  if (set?.previewPassword && !isUnlocked) {
+    return (
+      <section className="mx-auto max-w-md rounded-md border border-line bg-white p-6 shadow-panel">
+        <h2 className="text-lg font-semibold">Preview password required</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Enter the 6-character password set for this question set.</p>
+        <input
+          autoComplete="off"
+          className="mt-5 w-full rounded-md border border-line px-3 py-2 text-sm tracking-[0.2em] outline-none focus:border-teal-600"
+          maxLength={6}
+          onChange={(event) => {
+            setPreviewPassword(event.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
+            setPasswordError("");
+          }}
+          placeholder="A1B2C3"
+          type="password"
+          value={previewPassword}
+        />
+        {passwordError ? <div className="mt-3 text-xs font-semibold text-red-700">{passwordError}</div> : null}
+        <button
+          className="mt-5 rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600"
+          onClick={() => {
+            if (previewPassword === set.previewPassword) {
+              setIsUnlocked(true);
+            } else {
+              setPasswordError("The preview password does not match.");
+            }
+          }}
+          type="button"
+        >
+          Open preview
         </button>
       </section>
     );

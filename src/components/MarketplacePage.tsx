@@ -31,7 +31,7 @@ const MARKETPLACE_REMOTE_MANIFEST_URL = `${MARKETPLACE_REMOTE_ROOT}/public/marke
 const MARKETPLACE_LOCAL_MANIFEST_URL = "/marketplace/manifest.json";
 
 export function MarketplacePage() {
-  const { navigate, setDbError, setQuestionSets } = useAppStore();
+  const { navigate, setDbError, setQuestionSets, tutorial, recordTutorialImport } = useAppStore();
   const [manifest, setManifest] = useState<MarketplaceManifest | null>(null);
   const [manifestSource, setManifestSource] = useState<"local" | "remote">("local");
   const [selectedId, setSelectedId] = useState("");
@@ -77,7 +77,8 @@ export function MarketplacePage() {
       packageType: summary.packageType ?? undefined,
       sourceFilename: item.filename,
       rowCount: summary.rowCount,
-      sectionCounts: summary.sectionCounts
+      sectionCounts: summary.sectionCounts,
+      previewPassword: summary.previewPassword
     });
   }
 
@@ -89,6 +90,11 @@ export function MarketplacePage() {
       setQuestionSets(sets);
       setDbError(null);
       setImportState({ id: item.id, message: `Imported ${saved.name}`, status: "done" });
+      if (tutorial.active && tutorial.step === "marketplace_add" && item.id === items[0]?.id) {
+        recordTutorialImport(saved.id, saved.name);
+        navigate("sets");
+        return;
+      }
       navigate("preview", saved.id);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Could not import marketplace bundle.";
@@ -222,6 +228,7 @@ export function MarketplacePage() {
                   const isSelected = selectedItem?.id === item.id;
                   const isChecked = selectedBundleIds.has(item.id);
                   const isImporting = importState.status === "loading" && importState.id === item.id;
+                  const isTutorialFirstItem = tutorial.active && tutorial.step === "marketplace_add" && item.id === items[0]?.id;
                   return (
                     <article
                       className={`rounded-md border bg-white p-4 transition ${
@@ -248,7 +255,9 @@ export function MarketplacePage() {
                       </button>
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
                         <button
-                          className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          className={`rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:bg-slate-300 ${
+                            isTutorialFirstItem ? "tutorial-active-target tutorial-target-ring" : ""
+                          }`}
                           disabled={isImporting}
                           onClick={() => void importMarketplaceItem(item)}
                           type="button"
