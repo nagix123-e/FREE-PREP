@@ -181,7 +181,7 @@ export function MarketplacePage() {
             ⬇
           </div>
           <div>
-            <div className="text-xs font-black uppercase tracking-wide text-teal-700">Local marketplace preview</div>
+            <div className="text-xs font-black uppercase tracking-wide text-teal-700">Market place download from github</div>
             <h2 className="mt-2 text-2xl font-semibold">SAT Question Set Marketplace</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               CSV bundles can be added directly to this app. Every bundle is listed at $0 and imports into local SQLite without saving to Downloads first.
