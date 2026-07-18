@@ -4,8 +4,9 @@ import { addToReviewList } from "../services/reviewListService";
 import { listHighlights } from "../services/highlightService";
 import { listNotes } from "../services/noteService";
 import { getScoreResult } from "../services/scoringService";
+import { getQuestionSet } from "../lib/database";
 import { useAppStore } from "../store/appStore";
-import type { GradedQuestion, ResponseRecord, ScoreResult } from "../types";
+import type { GradedQuestion, QuestionSet, ResponseRecord, ScoreResult } from "../types";
 import { ReviewQuestionCard } from "./review/ReviewQuestionCard";
 import { DropdownSelect } from "./ui/DropdownSelect";
 
@@ -21,6 +22,11 @@ export function ReviewAnswersPage() {
     setReviewFilterPreset
   } = useAppStore();
   const [result, setResult] = useState<ScoreResult | null>(null);
+  const [questionSet, setQuestionSet] = useState<QuestionSet | null>(null);
+  const [isLoadingQuestionSet, setIsLoadingQuestionSet] = useState(Boolean(selectedSetId));
+  const [reviewPassword, setReviewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [baseFilter, setBaseFilter] = useState<BaseFilter>(
     reviewFilterPreset === "incorrect" ? "incorrect" : "all"
   );
@@ -46,6 +52,29 @@ export function ReviewAnswersPage() {
         setDbError(error instanceof Error ? error.message : "Could not load answer review.")
       );
   }, [selectedAttemptId, setDbError]);
+
+  useEffect(() => {
+    setReviewPassword("");
+    setPasswordError("");
+    setIsUnlocked(false);
+
+    if (!selectedSetId) {
+      setQuestionSet(null);
+      setIsLoadingQuestionSet(false);
+      return;
+    }
+
+    setIsLoadingQuestionSet(true);
+    getQuestionSet(selectedSetId)
+      .then((nextSet) => {
+        setQuestionSet(nextSet);
+        setDbError(null);
+      })
+      .catch((error: unknown) =>
+        setDbError(error instanceof Error ? error.message : "Could not load question set protection.")
+      )
+      .finally(() => setIsLoadingQuestionSet(false));
+  }, [selectedSetId, setDbError]);
 
   useEffect(() => {
     if (!selectedAttemptId) return;
@@ -112,6 +141,56 @@ export function ReviewAnswersPage() {
 
   if (!selectedAttemptId) {
     return <div className="text-sm text-muted">No attempt selected.</div>;
+  }
+
+  if (isLoadingQuestionSet) {
+    return <div className="text-sm text-muted">Loading answer review...</div>;
+  }
+
+  if (questionSet?.previewPassword && !isUnlocked) {
+    return (
+      <section className="mx-auto max-w-md rounded-md border border-line bg-white p-6 shadow-panel">
+        <h2 className="text-lg font-semibold">Password required for answer review</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Your score is available, but answers and explanations for this question set require the 6-character password.
+        </p>
+        <input
+          autoComplete="off"
+          className="mt-5 w-full rounded-md border border-line px-3 py-2 text-sm tracking-[0.2em] outline-none focus:border-teal-600"
+          maxLength={6}
+          onChange={(event) => {
+            setReviewPassword(event.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
+            setPasswordError("");
+          }}
+          placeholder="A1B2C3"
+          type="password"
+          value={reviewPassword}
+        />
+        {passwordError ? <div className="mt-3 text-xs font-semibold text-red-700">{passwordError}</div> : null}
+        <div className="mt-5 flex gap-3">
+          <button
+            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600"
+            onClick={() => {
+              if (reviewPassword === questionSet.previewPassword) {
+                setIsUnlocked(true);
+              } else {
+                setPasswordError("The review password does not match.");
+              }
+            }}
+            type="button"
+          >
+            Open answer review
+          </button>
+          <button
+            className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            onClick={() => navigate("result", selectedSetId ?? undefined, selectedAttemptId)}
+            type="button"
+          >
+            Back to score
+          </button>
+        </div>
+      </section>
+    );
   }
 
   return (

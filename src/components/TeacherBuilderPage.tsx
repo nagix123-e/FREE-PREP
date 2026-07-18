@@ -7,9 +7,11 @@ import {
   listTeacherDrafts,
   deleteTeacherDraft,
   saveTeacherDraft,
+  setQuestionSetEditPasskey,
   updateQuestionSetQuestions,
   type TeacherDraft
 } from "../lib/database";
+import { createEditingPasskey, isDevicePasskeyAvailable, verifyEditingPasskey } from "../lib/localPasskey";
 import { useAppStore, type TutorialStep } from "../store/appStore";
 import type { PackageType, Question, QuestionSet, QuestionType, Section, VisualType } from "../types";
 import { VisualRenderer } from "./visual/VisualRenderer";
@@ -149,6 +151,11 @@ export function TeacherBuilderPage() {
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [editState, setEditState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [loadedSetId, setLoadedSetId] = useState<number | null>(null);
+  const [loadedQuestionSet, setLoadedQuestionSet] = useState<QuestionSet | null>(null);
+  const [lockedQuestionSet, setLockedQuestionSet] = useState<QuestionSet | null>(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [editAuthError, setEditAuthError] = useState("");
+  const [passkeyState, setPasskeyState] = useState<"idle" | "registering" | "removing" | "authenticating">("idle");
   const [rows, setRows] = useState<BuilderRow[]>(() => createRows("rw_section", "teacher-set-001", ""));
 
   const csvText = useMemo(() => Papa.unparse(rows, { columns: CSV_HEADERS }), [rows]);
@@ -165,6 +172,7 @@ export function TeacherBuilderPage() {
     setRows(createRows(nextPackageType, nextTestId, nextPreviewPassword));
     setActiveIndex(0);
     setLoadedSetId(null);
+    setLoadedQuestionSet(null);
   }
 
   function updateTestId(value: string) {
@@ -279,6 +287,7 @@ export function TeacherBuilderPage() {
     setRows(data.rows);
     setActiveIndex(Math.max(0, Math.min(data.activeIndex ?? 0, data.rows.length - 1)));
     setLoadedSetId(null);
+    setLoadedQuestionSet(null);
   }
 
   async function deleteDraft() {
@@ -303,6 +312,7 @@ export function TeacherBuilderPage() {
       setRows(questions.map((question) => questionToBuilderRow(question, set.previewPassword)));
       setActiveIndex(0);
       setLoadedSetId(set.id);
+      setLoadedQuestionSet(set);
       setEditState("idle");
     } catch (error) {
       setDbError(error instanceof Error ? error.message : String(error));
@@ -318,7 +328,7 @@ export function TeacherBuilderPage() {
     }
     setEditState("saving");
     try {
-      await updateQuestionSetQuestions({
+      const updatedSet = await updateQuestionSetQuestions({
         questionSetId: loadedSetId,
         questions: summary.questions,
         status: "valid",
@@ -327,11 +337,79 @@ export function TeacherBuilderPage() {
         previewPassword: summary.previewPassword
       });
       setQuestionSets(await listQuestionSets());
+      setLoadedQuestionSet(updatedSet);
       setEditState("saved");
       window.setTimeout(() => setEditState("idle"), 2200);
     } catch (error) {
       setEditState("error");
       setDbError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function requestQuestionSetEdit(set: QuestionSet) {
+    if (!set.previewPassword) {
+      void loadQuestionSetForEditing(set);
+      return;
+    }
+    setLockedQuestionSet(set);
+    setEditPassword("");
+    setEditAuthError("");
+  }
+
+  async function unlockWithPassword() {
+    if (!lockedQuestionSet) return;
+    if (editPassword !== lockedQuestionSet.previewPassword) {
+      setEditAuthError("The edit password does not match.");
+      return;
+    }
+    const set = lockedQuestionSet;
+    setLockedQuestionSet(null);
+    await loadQuestionSetForEditing(set);
+  }
+
+  async function unlockWithPasskey() {
+    if (!lockedQuestionSet?.editPasskeyCredentialId) return;
+    setPasskeyState("authenticating");
+    setEditAuthError("");
+    try {
+      const isVerified = await verifyEditingPasskey(lockedQuestionSet.editPasskeyCredentialId);
+      if (!isVerified) throw new Error("The selected device passkey does not match this question set.");
+      const set = lockedQuestionSet;
+      setLockedQuestionSet(null);
+      await loadQuestionSetForEditing(set);
+    } catch (error) {
+      setEditAuthError(error instanceof Error ? error.message : "Device passkey verification failed.");
+    } finally {
+      setPasskeyState("idle");
+    }
+  }
+
+  async function configureEditingPasskey() {
+    if (!loadedQuestionSet || !loadedSetId) return;
+    setPasskeyState("registering");
+    try {
+      const credentialId = await createEditingPasskey(loadedQuestionSet.name);
+      const updatedSet = await setQuestionSetEditPasskey(loadedSetId, credentialId);
+      setLoadedQuestionSet(updatedSet);
+      setQuestionSets(await listQuestionSets());
+    } catch (error) {
+      setDbError(error instanceof Error ? error.message : "Could not add the device passkey.");
+    } finally {
+      setPasskeyState("idle");
+    }
+  }
+
+  async function removeEditingPasskey() {
+    if (!loadedQuestionSet || !loadedSetId) return;
+    setPasskeyState("removing");
+    try {
+      const updatedSet = await setQuestionSetEditPasskey(loadedSetId, "");
+      setLoadedQuestionSet(updatedSet);
+      setQuestionSets(await listQuestionSets());
+    } catch (error) {
+      setDbError(error instanceof Error ? error.message : "Could not remove the device passkey.");
+    } finally {
+      setPasskeyState("idle");
     }
   }
 
@@ -455,7 +533,7 @@ export function TeacherBuilderPage() {
               defaultValue=""
               onChange={(event) => {
                 const set = questionSets.find((item) => String(item.id) === event.target.value);
-                if (set) void loadQuestionSetForEditing(set);
+                if (set) requestQuestionSetEdit(set);
                 event.currentTarget.value = "";
               }}
             >
@@ -498,7 +576,32 @@ export function TeacherBuilderPage() {
         </div>
 
         {loadedSetId ? (
-          <div className="mt-3 text-xs font-semibold text-teal-700">Editing an imported local question set. Save changes to update it in place.</div>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold text-teal-700">
+            <span>Editing an imported local question set. Save changes to update it in place.</span>
+            {loadedQuestionSet?.previewPassword ? (
+              loadedQuestionSet.editPasskeyCredentialId ? (
+                <button
+                  className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  disabled={passkeyState !== "idle"}
+                  onClick={() => void removeEditingPasskey()}
+                  type="button"
+                >
+                  {passkeyState === "removing" ? "Removing device passkey..." : "Remove device passkey"}
+                </button>
+              ) : (
+                <button
+                  className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                  disabled={!isDevicePasskeyAvailable() || passkeyState !== "idle"}
+                  onClick={() => void configureEditingPasskey()}
+                  type="button"
+                >
+                  {passkeyState === "registering" ? "Adding device passkey..." : "Add device passkey"}
+                </button>
+              )
+            ) : (
+              <span className="text-slate-500">Set and save a preview password to enable password-protected editing.</span>
+            )}
+          </div>
         ) : null}
 
         <div className="mt-6 grid grid-cols-5 gap-4">
@@ -757,6 +860,87 @@ export function TeacherBuilderPage() {
         </aside>
       </div>
       </div>
+      {lockedQuestionSet ? (
+        <EditQuestionSetLockDialog
+          error={editAuthError}
+          isPasskeyBusy={passkeyState === "authenticating"}
+          onCancel={() => setLockedQuestionSet(null)}
+          onPasswordChange={(value) => {
+            setEditPassword(value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
+            setEditAuthError("");
+          }}
+          onSubmitPassword={() => void unlockWithPassword()}
+          onUsePasskey={() => void unlockWithPasskey()}
+          password={editPassword}
+          passkeyAvailable={Boolean(lockedQuestionSet.editPasskeyCredentialId && isDevicePasskeyAvailable())}
+          setName={lockedQuestionSet.name}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function EditQuestionSetLockDialog({
+  setName,
+  password,
+  error,
+  passkeyAvailable,
+  isPasskeyBusy,
+  onPasswordChange,
+  onSubmitPassword,
+  onUsePasskey,
+  onCancel
+}: {
+  setName: string;
+  password: string;
+  error: string;
+  passkeyAvailable: boolean;
+  isPasskeyBusy: boolean;
+  onPasswordChange: (value: string) => void;
+  onSubmitPassword: () => void;
+  onUsePasskey: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
+      <section aria-modal="true" className="w-full max-w-md rounded-md border border-line bg-white p-6 shadow-xl" role="dialog">
+        <h2 className="text-lg font-semibold">Password required to edit</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          <span className="font-semibold text-ink">{setName}</span> is password-protected. Enter its 6-character password to edit questions.
+        </p>
+        <input
+          autoComplete="off"
+          autoFocus
+          className="mt-5 w-full rounded-md border border-line px-3 py-2 text-sm tracking-[0.2em] outline-none focus:border-teal-600"
+          maxLength={6}
+          onChange={(event) => onPasswordChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onSubmitPassword();
+          }}
+          placeholder="A1B2C3"
+          type="password"
+          value={password}
+        />
+        {error ? <div className="mt-3 text-xs font-semibold text-red-700">{error}</div> : null}
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600" onClick={onSubmitPassword} type="button">
+            Unlock editing
+          </button>
+          {passkeyAvailable ? (
+            <button
+              className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:text-slate-400"
+              disabled={isPasskeyBusy}
+              onClick={onUsePasskey}
+              type="button"
+            >
+              {isPasskeyBusy ? "Checking device passkey..." : "Use device passkey"}
+            </button>
+          ) : null}
+          <button className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={onCancel} type="button">
+            Cancel
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

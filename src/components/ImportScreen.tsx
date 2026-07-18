@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
-import { getPackageTypeLabel, parseCsvFile, parseCsvText } from "../lib/csvValidation";
+import { canSaveValidationSummary, getPackageTypeLabel, parseCsvFile, parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import {
   getUnsavedSampleOptions,
@@ -57,7 +57,7 @@ export function ImportScreen() {
     name: currentSetName,
     summary: currentSummary
   });
-  const canSave = Boolean(currentSummary?.valid && currentSetName.trim() && !isSaving && !isParsing);
+  const canSave = Boolean(currentSummary && canSaveValidationSummary(currentSummary) && currentSetName.trim() && !isSaving && !isParsing);
   const orderedCounts = useMemo(
     () => getExpectedCountRows(currentSummary),
     [currentSummary]
@@ -210,7 +210,7 @@ export function ImportScreen() {
         name: currentSetName.trim(),
         description: currentDescription.trim(),
         questions: currentSummary.questions,
-        status: currentSummary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid",
+        status: currentSummary.issues.length > 0 ? "warning" : "valid",
         packageType: currentSummary.packageType ?? undefined,
         sourceFilename: activeItem.sourceFilename || currentFileName,
         rowCount: currentSummary.rowCount,
@@ -539,7 +539,9 @@ export function ImportScreen() {
             >
               {currentSummary.valid
                 ? "CSV is valid and ready to save."
-                : "CSV has errors that must be fixed before saving."}
+                : currentSummary.previewPasswordConflict
+                  ? "CSV has mixed preview passwords. It can be saved without preview password protection."
+                  : "CSV has errors that must be fixed before saving."}
             </div>
 
             <div className="space-y-2">
@@ -626,7 +628,7 @@ function getSaveReadinessMessage({
   if (isParsing) return "Wait for CSV parsing to finish before saving.";
   if (!fileName) return "Choose a CSV file before saving.";
   if (!summary) return "CSV validation results are not available yet.";
-  if (!summary.valid) return "Fix validation errors before saving.";
+  if (!canSaveValidationSummary(summary)) return "Fix validation errors before saving.";
   if (!name.trim()) return "Enter a question set name before saving.";
   return null;
 }

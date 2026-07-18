@@ -43,7 +43,8 @@ export async function initializeSchema(db: Database): Promise<void> {
       source_filename TEXT NOT NULL DEFAULT '',
       row_count INTEGER NOT NULL DEFAULT 0,
       section_counts TEXT NOT NULL DEFAULT '',
-      preview_password TEXT NOT NULL DEFAULT ''
+      preview_password TEXT NOT NULL DEFAULT '',
+      edit_passkey_credential_id TEXT NOT NULL DEFAULT ''
     )
   `);
   await ensureColumn(db, "question_sets", "package_type", "TEXT NOT NULL DEFAULT 'full_test'");
@@ -51,6 +52,7 @@ export async function initializeSchema(db: Database): Promise<void> {
   await ensureColumn(db, "question_sets", "row_count", "INTEGER NOT NULL DEFAULT 0");
   await ensureColumn(db, "question_sets", "section_counts", "TEXT NOT NULL DEFAULT ''");
   await ensureColumn(db, "question_sets", "preview_password", "TEXT NOT NULL DEFAULT ''");
+  await ensureColumn(db, "question_sets", "edit_passkey_credential_id", "TEXT NOT NULL DEFAULT ''");
   await db.execute(`
     CREATE TABLE IF NOT EXISTS teacher_drafts (
       id TEXT PRIMARY KEY,
@@ -346,6 +348,7 @@ export async function saveQuestionSet(input: {
       rowCount,
       sectionCounts,
       previewPassword: input.previewPassword ?? "",
+      editPasskeyCredentialId: "",
       hasAttempts: false
     };
   } catch (error) {
@@ -366,7 +369,7 @@ export async function listQuestionSets(): Promise<QuestionSet[]> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
     `SELECT id, name, description, imported_at, total_questions, status,
-            package_type, source_filename, row_count, section_counts, preview_password,
+            package_type, source_filename, row_count, section_counts, preview_password, edit_passkey_credential_id,
             EXISTS(SELECT 1 FROM attempts WHERE attempts.question_set_id = question_sets.id) AS has_attempts
      FROM question_sets
      ORDER BY imported_at DESC`
@@ -378,7 +381,7 @@ export async function getQuestionSet(id: number): Promise<QuestionSet | null> {
   const db = await getDatabase();
   const rows = await db.select<QuestionSetRow[]>(
     `SELECT id, name, description, imported_at, total_questions, status,
-            package_type, source_filename, row_count, section_counts, preview_password,
+            package_type, source_filename, row_count, section_counts, preview_password, edit_passkey_credential_id,
             EXISTS(SELECT 1 FROM attempts WHERE attempts.question_set_id = question_sets.id) AS has_attempts
      FROM question_sets
      WHERE id = $1`,
@@ -556,20 +559,38 @@ export async function updateQuestionSetQuestions(input: {
   }
 
   const sectionCounts = input.sectionCounts ?? countSections(input.questions);
+  const nextPreviewPassword = input.previewPassword ?? set.previewPassword;
   await db.execute(
     `UPDATE question_sets
-     SET total_questions = $1, status = $2, row_count = $3, section_counts = $4, preview_password = $5
+     SET total_questions = $1,
+         status = $2,
+         row_count = $3,
+         section_counts = $4,
+         preview_password = $5,
+         edit_passkey_credential_id = CASE WHEN $5 = '' THEN '' ELSE edit_passkey_credential_id END
      WHERE id = $6`,
     [
       input.questions.length,
       input.status,
       input.rowCount ?? input.questions.length,
       JSON.stringify(sectionCounts),
-      input.previewPassword ?? set.previewPassword,
+      nextPreviewPassword,
       input.questionSetId
     ]
   );
   return (await getQuestionSet(input.questionSetId))!;
+}
+
+export async function setQuestionSetEditPasskey(questionSetId: number, credentialId: string): Promise<QuestionSet> {
+  const db = await getDatabase();
+  const set = await getQuestionSet(questionSetId);
+  if (!set) throw new Error("Question set could not be found.");
+  if (!set.previewPassword) throw new Error("Set an edit password before adding a device passkey.");
+  await db.execute(
+    "UPDATE question_sets SET edit_passkey_credential_id = $1 WHERE id = $2",
+    [credentialId, questionSetId]
+  );
+  return (await getQuestionSet(questionSetId))!;
 }
 
 export async function combineSectionQuestionSets(input: {
@@ -900,6 +921,7 @@ interface QuestionSetRow {
   row_count: number | null;
   section_counts: string | null;
   preview_password: string | null;
+  edit_passkey_credential_id: string | null;
   has_attempts?: number | boolean | string | null;
 }
 
@@ -966,7 +988,8 @@ function toQuestionSet(row: QuestionSetRow): QuestionSet {
     rowCount,
     sectionCounts,
     hasAttempts: row.has_attempts === true || row.has_attempts === 1 || row.has_attempts === "1",
-    previewPassword: row.preview_password ?? ""
+    previewPassword: row.preview_password ?? "",
+    editPasskeyCredentialId: row.edit_passkey_credential_id ?? ""
   };
 }
 

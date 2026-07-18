@@ -168,6 +168,8 @@ export interface QuestionSet {
   sectionCounts: Record<Section, number>;
   hasAttempts: boolean;
   previewPassword: string;
+  /** Optional device passkey allowed as an alternative to the edit password. */
+  editPasskeyCredentialId: string;
 }
 
 export interface Attempt {
@@ -320,6 +322,8 @@ export interface ValidationIssue {
 
 export interface ValidationSummary {
   valid: boolean;
+  /** A non-blocking CSV error: mixed values cannot define one set-level password. */
+  previewPasswordConflict: boolean;
   questions: Question[];
   issues: ValidationIssue[];
   counts: Record<string, number>;

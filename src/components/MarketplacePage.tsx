@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { parseCsvText } from "../lib/csvValidation";
+import { canSaveValidationSummary, parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import { useAppStore } from "../store/appStore";
 
@@ -65,7 +65,7 @@ export function MarketplacePage() {
     if (!response.ok) throw new Error(`Could not download ${item.filename} (${response.status}).`);
     const csvText = await response.text();
     const summary = parseCsvText(csvText);
-    if (!summary.valid) {
+    if (!canSaveValidationSummary(summary)) {
       const firstError = summary.issues.find((issue) => issue.level === "error");
       throw new Error(firstError?.message ?? "This bundle is not valid and cannot be imported.");
     }
@@ -73,7 +73,7 @@ export function MarketplacePage() {
       name: item.title,
       description: `${item.collection}. ${item.description}`,
       questions: summary.questions,
-      status: summary.issues.some((issue) => issue.level === "warning") ? "warning" : "valid",
+      status: summary.issues.length > 0 ? "warning" : "valid",
       packageType: summary.packageType ?? undefined,
       sourceFilename: item.filename,
       rowCount: summary.rowCount,

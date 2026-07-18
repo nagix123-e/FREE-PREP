@@ -121,6 +121,7 @@ export function parseCsvFile(file: File): Promise<ValidationSummary> {
           rowCount: 0,
           sectionCounts: emptySectionCounts(),
           previewPassword: "",
+          previewPasswordConflict: false,
           issues: [{ level: "error", message: `CSV parse error: ${error.message}` }]
         })
     });
@@ -165,6 +166,7 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
       rowCount: 0,
       sectionCounts: emptySectionCounts(),
       previewPassword: "",
+      previewPasswordConflict: false,
       issues
     };
   }
@@ -176,12 +178,14 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
   const contentDomainCounts: Record<string, number> = {};
   const skillGroupCounts: Record<string, number> = {};
   const sectionCounts = emptySectionCounts();
-  const previewPasswords = new Set(
-    result.data.map((row) => (row.preview_password ?? "").trim()).filter(Boolean)
-  );
-  const previewPassword = [...previewPasswords][0] ?? "";
-  if (previewPasswords.size > 1) {
-    issues.push({ level: "error", message: "preview_password must be the same for every row in a set." });
+  const previewPasswords = new Set(result.data.map((row) => (row.preview_password ?? "").trim()));
+  const previewPasswordConflict = previewPasswords.size > 1;
+  const previewPassword = previewPasswordConflict ? "" : [...previewPasswords][0] ?? "";
+  if (previewPasswordConflict) {
+    issues.push({
+      level: "error",
+      message: "preview_password values are mixed. The set can be saved and previewed, but no preview password will be applied."
+    });
   } else if (previewPassword && !/^[A-Za-z0-9]{6}$/.test(previewPassword)) {
     issues.push({ level: "error", message: "preview_password must be exactly 6 letters and numbers." });
   }
@@ -234,8 +238,14 @@ export function validateParseResult(result: ParseResult<Record<string, string>>)
     rowCount: questions.length,
     sectionCounts,
     previewPassword,
+    previewPasswordConflict,
     issues
   };
+}
+
+/** Mixed preview passwords are reported as errors, but do not make the questions unusable. */
+export function canSaveValidationSummary(summary: ValidationSummary): boolean {
+  return summary.valid || (summary.previewPasswordConflict && summary.issues.every((issue) => issue.level !== "error" || issue.message.startsWith("preview_password values are mixed.")));
 }
 
 export function getPackageTypeLabel(packageType: PackageType): string {
