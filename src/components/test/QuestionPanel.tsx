@@ -42,6 +42,7 @@ export function QuestionPanel({
 
       {question.questionType === "student_response" ? (
         <StudentResponseInput
+          answerFormat={question.section === "MATH" ? getStudentResponseAnswerFormat(question.correctNumericAnswer) : undefined}
           onChange={onStudentResponse}
           value={response?.selectedAnswer ?? ""}
         />
@@ -56,4 +57,11 @@ export function QuestionPanel({
       )}
     </article>
   );
+}
+
+function getStudentResponseAnswerFormat(value: string): "Decimal" | "Fraction" | "Integer" {
+  const answer = value.trim();
+  if (answer.includes("/")) return "Fraction";
+  if (answer.includes(".")) return "Decimal";
+  return "Integer";
 }

@@ -11,7 +11,14 @@ import {
   updateQuestionSetQuestions,
   type TeacherDraft
 } from "../lib/database";
-import { createEditingPasskey, isDevicePasskeyAvailable, verifyEditingPasskey } from "../lib/localPasskey";
+import {
+  createNativeEditingPasskey,
+  getNativePasskeyStatus,
+  isNativePasskeyCredentialId,
+  removeNativeEditingPasskey,
+  type NativePasskeyStatus,
+  verifyNativeEditingPasskey
+} from "../lib/nativePasskey";
 import { useAppStore, type TutorialStep } from "../store/appStore";
 import type { PackageType, Question, QuestionSet, QuestionType, Section, VisualType } from "../types";
 import { VisualRenderer } from "./visual/VisualRenderer";
@@ -156,6 +163,10 @@ export function TeacherBuilderPage() {
   const [editPassword, setEditPassword] = useState("");
   const [editAuthError, setEditAuthError] = useState("");
   const [passkeyState, setPasskeyState] = useState<"idle" | "registering" | "removing" | "authenticating">("idle");
+  const [nativePasskeyStatus, setNativePasskeyStatus] = useState<NativePasskeyStatus>({
+    available: false,
+    message: "Checking device authentication..."
+  });
   const [rows, setRows] = useState<BuilderRow[]>(() => createRows("rw_section", "teacher-set-001", ""));
 
   const csvText = useMemo(() => Papa.unparse(rows, { columns: CSV_HEADERS }), [rows]);
@@ -167,6 +178,10 @@ export function TeacherBuilderPage() {
   useEffect(() => {
     listTeacherDrafts().then(setDrafts).catch((error) => setDbError(error instanceof Error ? error.message : String(error)));
   }, [setDbError]);
+
+  useEffect(() => {
+    void getNativePasskeyStatus().then(setNativePasskeyStatus);
+  }, []);
 
   function rebuild(nextPackageType: PackageType, nextTestId = testId, nextPreviewPassword = previewPassword) {
     setRows(createRows(nextPackageType, nextTestId, nextPreviewPassword));
@@ -368,11 +383,11 @@ export function TeacherBuilderPage() {
   }
 
   async function unlockWithPasskey() {
-    if (!lockedQuestionSet?.editPasskeyCredentialId) return;
+    if (!lockedQuestionSet?.editPasskeyCredentialId || !isNativePasskeyCredentialId(lockedQuestionSet.editPasskeyCredentialId)) return;
     setPasskeyState("authenticating");
     setEditAuthError("");
     try {
-      const isVerified = await verifyEditingPasskey(lockedQuestionSet.editPasskeyCredentialId);
+      const isVerified = await verifyNativeEditingPasskey(lockedQuestionSet.editPasskeyCredentialId, lockedQuestionSet.name);
       if (!isVerified) throw new Error("The selected device passkey does not match this question set.");
       const set = lockedQuestionSet;
       setLockedQuestionSet(null);
@@ -388,7 +403,7 @@ export function TeacherBuilderPage() {
     if (!loadedQuestionSet || !loadedSetId) return;
     setPasskeyState("registering");
     try {
-      const credentialId = await createEditingPasskey(loadedQuestionSet.name);
+      const credentialId = await createNativeEditingPasskey(loadedSetId);
       const updatedSet = await setQuestionSetEditPasskey(loadedSetId, credentialId);
       setLoadedQuestionSet(updatedSet);
       setQuestionSets(await listQuestionSets());
@@ -403,7 +418,9 @@ export function TeacherBuilderPage() {
     if (!loadedQuestionSet || !loadedSetId) return;
     setPasskeyState("removing");
     try {
+      const credentialId = loadedQuestionSet.editPasskeyCredentialId;
       const updatedSet = await setQuestionSetEditPasskey(loadedSetId, "");
+      await removeNativeEditingPasskey(credentialId);
       setLoadedQuestionSet(updatedSet);
       setQuestionSets(await listQuestionSets());
     } catch (error) {
@@ -579,7 +596,7 @@ export function TeacherBuilderPage() {
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold text-teal-700">
             <span>Editing an imported local question set. Save changes to update it in place.</span>
             {loadedQuestionSet?.previewPassword ? (
-              loadedQuestionSet.editPasskeyCredentialId ? (
+              loadedQuestionSet.editPasskeyCredentialId && isNativePasskeyCredentialId(loadedQuestionSet.editPasskeyCredentialId) ? (
                 <button
                   className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   disabled={passkeyState !== "idle"}
@@ -588,16 +605,22 @@ export function TeacherBuilderPage() {
                 >
                   {passkeyState === "removing" ? "Removing device passkey..." : "Remove device passkey"}
                 </button>
-              ) : (
-                <button
-                  className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                  disabled={!isDevicePasskeyAvailable() || passkeyState !== "idle"}
-                  onClick={() => void configureEditingPasskey()}
-                  type="button"
-                >
-                  {passkeyState === "registering" ? "Adding device passkey..." : "Add device passkey"}
-                </button>
-              )
+              ) : nativePasskeyStatus.available ? (
+                  <button
+                    className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                    disabled={passkeyState !== "idle"}
+                    onClick={() => void configureEditingPasskey()}
+                    type="button"
+                  >
+                    {passkeyState === "registering"
+                      ? "Adding device passkey..."
+                      : loadedQuestionSet.editPasskeyCredentialId
+                        ? "Replace device passkey"
+                        : "Add device passkey"}
+                  </button>
+                ) : (
+                  <span className="text-slate-500">{nativePasskeyStatus.message} Use the edit password.</span>
+                )
             ) : (
               <span className="text-slate-500">Set and save a preview password to enable password-protected editing.</span>
             )}
@@ -872,7 +895,11 @@ export function TeacherBuilderPage() {
           onSubmitPassword={() => void unlockWithPassword()}
           onUsePasskey={() => void unlockWithPasskey()}
           password={editPassword}
-          passkeyAvailable={Boolean(lockedQuestionSet.editPasskeyCredentialId && isDevicePasskeyAvailable())}
+          passkeyAvailable={Boolean(
+            nativePasskeyStatus.available &&
+              lockedQuestionSet.editPasskeyCredentialId &&
+              isNativePasskeyCredentialId(lockedQuestionSet.editPasskeyCredentialId)
+          )}
           setName={lockedQuestionSet.name}
         />
       ) : null}

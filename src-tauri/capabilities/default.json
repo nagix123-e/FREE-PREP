@@ -5,6 +5,23 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "biometry:allow-status",
+    {
+      "identifier": "biometry:allow-has-data",
+      "allow": [{ "domain": "com.satpracticesimulator.app.edit-passkeys" }]
+    },
+    {
+      "identifier": "biometry:allow-get-data",
+      "allow": [{ "domain": "com.satpracticesimulator.app.edit-passkeys" }]
+    },
+    {
+      "identifier": "biometry:allow-set-data",
+      "allow": [{ "domain": "com.satpracticesimulator.app.edit-passkeys" }]
+    },
+    {
+      "identifier": "biometry:allow-remove-data",
+      "allow": [{ "domain": "com.satpracticesimulator.app.edit-passkeys" }]
+    },
     "sql:default",
     "sql:allow-execute",
     {

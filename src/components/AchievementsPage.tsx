@@ -919,12 +919,54 @@ function buildAchievementGroups(attempts: AttemptSummary[]): AchievementGroups {
     .filter((attempt) => attempt.status === "completed")
     .filter((attempt) => !isFocusedPracticeAttempt(attempt.mode))
     .sort((a, b) => getAttemptTime(b) - getAttemptTime(a));
+  const pairedSections = findSingleSectionPairs(completed);
+  const pairedAttemptIds = new Set(pairedSections.flatMap((pair) => [pair.rw.id, pair.math.id]));
+  const individualAttempts = completed.filter((attempt) => !pairedAttemptIds.has(attempt.id));
 
   return {
-    Total: completed.flatMap((attempt) => makeAchievementItem(attempt, "Total")),
-    RW: completed.flatMap((attempt) => makeAchievementItem(attempt, "RW")),
-    Math: completed.flatMap((attempt) => makeAchievementItem(attempt, "Math"))
+    Total: [
+      ...individualAttempts.flatMap((attempt) => makeAchievementItem(attempt, "Total")),
+      ...pairedSections.flatMap(makePairedTotalAchievementItem)
+    ],
+    RW: [
+      ...individualAttempts.flatMap((attempt) => makeAchievementItem(attempt, "RW")),
+      ...pairedSections.flatMap((pair) => makeAchievementItem(pair.rw, "RW"))
+    ],
+    Math: [
+      ...individualAttempts.flatMap((attempt) => makeAchievementItem(attempt, "Math")),
+      ...pairedSections.flatMap((pair) => makeAchievementItem(pair.math, "Math"))
+    ]
   };
+}
+
+function findSingleSectionPairs(attempts: AttemptSummary[]): Array<{ rw: AttemptSummary; math: AttemptSummary }> {
+  const byQuestionSet = new Map<number, AttemptSummary[]>();
+  attempts.forEach((attempt) => {
+    byQuestionSet.set(attempt.questionSetId, [...(byQuestionSet.get(attempt.questionSetId) ?? []), attempt]);
+  });
+
+  return [...byQuestionSet.values()].flatMap((setAttempts) => {
+    const rwAttempts = setAttempts.filter((attempt) => attempt.mode === "full_hard_rw_practice");
+    const mathAttempts = setAttempts.filter((attempt) => attempt.mode === "full_hard_math_practice");
+    return rwAttempts.length === 1 && mathAttempts.length === 1 ? [{ rw: rwAttempts[0], math: mathAttempts[0] }] : [];
+  });
+}
+
+function makePairedTotalAchievementItem(pair: { rw: AttemptSummary; math: AttemptSummary }): AchievementItem[] {
+  const latestAttempt = getAttemptTime(pair.rw) >= getAttemptTime(pair.math) ? pair.rw : pair.math;
+  const score = latestAttempt.practiceScore ?? pair.rw.practiceScore ?? pair.math.practiceScore;
+  if (score === null || score === undefined) return [];
+
+  return [
+    {
+      id: `paired-${pair.rw.id}-${pair.math.id}-Total`,
+      category: "Total",
+      score,
+      rank: getRank(score, "Total"),
+      completedAt: latestAttempt.completedAt ?? latestAttempt.startedAt,
+      questionSetName: latestAttempt.questionSetName
+    }
+  ];
 }
 
 function isFocusedPracticeAttempt(mode: AttemptSummary["mode"]): boolean {
@@ -1139,7 +1181,7 @@ function buildProgress(attempts: AttemptSummary[]): AchievementProgress {
 function buildBadges(attempts: AttemptSummary[], scoreResults: ScoreResult[]): BadgeItem[] {
   const completed = attempts.filter((attempt) => attempt.status === "completed");
   const badges: BadgeItem[] = [];
-  const streak = calculateCurrentStreak(completed);
+  const streak = calculateLongestStreak(completed);
   const mistakeRecoveries = completed.filter((attempt) => attempt.mode === "mistake_practice").length;
   const progress = buildProgress(attempts);
   const bestScore = getCombinedBestSectionScore(completed);
@@ -1208,25 +1250,32 @@ function getCombinedBestSectionScore(attempts: AttemptSummary[]): number {
   return bestRwScore + bestMathScore;
 }
 
-function calculateCurrentStreak(attempts: AttemptSummary[]): number {
+function calculateLongestStreak(attempts: AttemptSummary[]): number {
   const completedDays = Array.from(
     new Set(
       attempts
         .filter((attempt) => attempt.status === "completed")
         .map((attempt) => toLocalDateKey(attempt.completedAt ?? attempt.startedAt))
     )
-  ).sort((a, b) => (a > b ? -1 : 1));
+  ).sort();
   if (completedDays.length === 0) return 0;
 
-  let streak = 0;
-  let cursor = new Date(`${completedDays[0]}T00:00:00`);
-  for (const day of completedDays) {
-    const expected = toLocalDateKey(cursor.toISOString());
-    if (day !== expected) break;
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+  let longestStreak = 1;
+  let currentStreak = 1;
+  for (let index = 1; index < completedDays.length; index += 1) {
+    if (getCalendarDayNumber(completedDays[index]) === getCalendarDayNumber(completedDays[index - 1]) + 1) {
+      currentStreak += 1;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
   }
-  return streak;
+  return longestStreak;
+}
+
+function getCalendarDayNumber(dateKey: string): number {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Date.UTC(year, month - 1, day) / 86_400_000;
 }
 
 function toLocalDateKey(value: string): string {

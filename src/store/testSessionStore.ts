@@ -34,6 +34,7 @@ interface TestSessionState {
   toggleEliminatedChoice: (question: Question, choice: string) => Promise<void>;
   enterModuleReview: () => Promise<void>;
   pauseAttempt: () => Promise<void>;
+  resumePausedAttempt: () => Promise<void>;
   submitModule: () => Promise<"test" | "sectionBreak" | "result">;
 }
 
@@ -108,6 +109,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
   },
 
   setQuestionIndex: async (questionIndex) => {
+    await persistActiveQuestionTime(set, get);
     const { attempt, moduleIndex, remainingTimeSec } = get();
     set({ questionIndex, activeQuestionStartedAtMs: Date.now() });
     if (attempt) {
@@ -164,6 +166,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
   },
 
   enterModuleReview: async () => {
+    await persistActiveQuestionTime(set, get);
     const { attempt, moduleIndex, questionIndex, remainingTimeSec } = get();
     if (attempt) {
       await saveAttemptPosition({
@@ -173,10 +176,12 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
         questionIndex,
         remainingTimeSec
       });
+      set({ attempt: { ...attempt, status: "module_review", remainingTimeSec } });
     }
   },
 
   pauseAttempt: async () => {
+    await persistActiveQuestionTime(set, get);
     const { attempt, moduleIndex, questionIndex, remainingTimeSec } = get();
     if (attempt) {
       await saveAttemptPosition({
@@ -188,6 +193,23 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
       });
       set({ attempt: { ...attempt, status: "paused", remainingTimeSec } });
     }
+  },
+
+  resumePausedAttempt: async () => {
+    const { attempt, moduleIndex, questionIndex, remainingTimeSec } = get();
+    if (!attempt) return;
+
+    await saveAttemptPosition({
+      attemptId: attempt.id,
+      status: "in_progress",
+      moduleIndex,
+      questionIndex,
+      remainingTimeSec
+    });
+    set({
+      attempt: { ...attempt, status: "in_progress", remainingTimeSec },
+      activeQuestionStartedAtMs: Date.now()
+    });
   },
 
   submitModule: async () => {
@@ -221,6 +243,7 @@ export const useTestSessionStore = create<TestSessionState>((set, get) => ({
     const nextModuleIndex = moduleIndex + 1;
     const nextRemaining = getModuleDurationSec(nextModuleIndex);
     set({
+      attempt: { ...attempt, status: "in_progress", remainingTimeSec: nextRemaining },
       moduleIndex: nextModuleIndex,
       questionIndex: 0,
       remainingTimeSec: nextRemaining,
@@ -298,6 +321,16 @@ async function persistResponse(
   });
 }
 
+async function persistActiveQuestionTime(
+  set: (partial: Partial<TestSessionState>) => void,
+  get: () => TestSessionState
+): Promise<void> {
+  const state = get();
+  const question = selectModuleQuestions(state)[state.questionIndex];
+  if (!question?.id || !state.attempt) return;
+  await persistResponse(getExistingResponse(question, get), set, get);
+}
+
 function getExistingResponse(question: Question, get: () => TestSessionState): ResponseRecord {
   const attempt = get().attempt;
   if (!attempt || !question.id) {
@@ -318,7 +351,8 @@ function getExistingResponse(question: Question, get: () => TestSessionState): R
 }
 
 function isAllowedStudentResponse(value: string): boolean {
-  return value === "" || /^-?(?:\d+(?:\.\d*)?|\.\d+|\d+\/\d+)$/.test(value);
+  // Keep partial fractions such as "1/" in the controlled input so students can finish typing "1/2".
+  return value === "" || /^-?(?:\d+(?:\.\d*)?|\.\d*|\d+\/\d*)?$/.test(value);
 }
 
 function normalizeAnswer(value: string): string {

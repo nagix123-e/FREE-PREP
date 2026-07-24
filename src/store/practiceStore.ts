@@ -64,6 +64,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     return attemptId;
   },
   setIndex: async (index) => {
+    await persistActivePracticeQuestionTime(set, get);
     const state = get();
     const nextIndex = Math.max(0, Math.min(index, state.questions.length - 1));
     set({ index: nextIndex, activeQuestionStartedAtMs: Date.now() });
@@ -90,14 +91,20 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       ? current.eliminatedChoices.filter((item) => item !== choice)
       : [...(current?.eliminatedChoices ?? []), choice];
     await saveResponse(response);
-    set({ responsesByQuestionId: { ...get().responsesByQuestionId, [response.questionId]: response } });
+    set({
+      responsesByQuestionId: { ...get().responsesByQuestionId, [response.questionId]: response },
+      activeQuestionStartedAtMs: Date.now()
+    });
   },
   toggleMarked: async (question) => {
     const current = get().responsesByQuestionId[question.id ?? -1];
     const response = makeResponse(get(), question, current?.selectedAnswer ?? "");
     response.marked = !current?.marked;
     await saveResponse(response);
-    set({ responsesByQuestionId: { ...get().responsesByQuestionId, [response.questionId]: response } });
+    set({
+      responsesByQuestionId: { ...get().responsesByQuestionId, [response.questionId]: response },
+      activeQuestionStartedAtMs: Date.now()
+    });
   },
   tickTimer: async () => {
     const state = get();
@@ -114,6 +121,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   },
   setTimerHidden: (hidden) => set({ timerHidden: hidden }),
   pausePractice: async () => {
+    await persistActivePracticeQuestionTime(set, get);
     const state = get();
     if (!state.attemptId) return;
     await updatePracticeAttemptProgress({
@@ -132,8 +140,10 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       remainingTimeSec: state.timerEnabled ? state.remainingTimeSec : null,
       status: "in_progress"
     });
+    set({ activeQuestionStartedAtMs: Date.now() });
   },
   finishPractice: async () => {
+    await persistActivePracticeQuestionTime(set, get);
     const state = get();
     if (!state.attemptId) return;
     for (const question of state.questions) {
@@ -171,6 +181,21 @@ function makeResponse(state: PracticeState, question: Question, selectedAnswer: 
     eliminatedChoices: current?.eliminatedChoices ?? [],
     timeSpentSec: (current?.timeSpentSec ?? 0) + elapsedSec
   };
+}
+
+async function persistActivePracticeQuestionTime(
+  set: (partial: Partial<PracticeState>) => void,
+  get: () => PracticeState
+): Promise<void> {
+  const state = get();
+  const question = state.questions[state.index];
+  if (!question?.id || !state.attemptId) return;
+  const response = makeResponse(state, question, state.responsesByQuestionId[question.id]?.selectedAnswer ?? "");
+  await saveResponse(response);
+  set({
+    responsesByQuestionId: { ...get().responsesByQuestionId, [response.questionId]: response },
+    activeQuestionStartedAtMs: Date.now()
+  });
 }
 
 function makeBlankResponse(state: PracticeState, question: Question): ResponseRecord {

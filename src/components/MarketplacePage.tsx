@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { canSaveValidationSummary, parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import { useAppStore } from "../store/appStore";
@@ -61,9 +62,7 @@ export function MarketplacePage() {
   const groupedItems = useMemo(() => groupMarketplaceItems(items), [items]);
 
   async function saveMarketplaceItem(item: MarketplaceItem) {
-    const response = await fetch(resolveMarketplaceAssetPath(item.path, manifestSource));
-    if (!response.ok) throw new Error(`Could not download ${item.filename} (${response.status}).`);
-    const csvText = await response.text();
+    const csvText = await loadMarketplaceCsv(item.path, manifestSource);
     const summary = parseCsvText(csvText);
     if (!canSaveValidationSummary(summary)) {
       const firstError = summary.issues.find((issue) => issue.level === "error");
@@ -339,10 +338,13 @@ async function loadMarketplaceManifest(): Promise<{ manifest: MarketplaceManifes
       source: "remote"
     };
   } catch {
-    return {
-      manifest: await fetchMarketplaceManifest(MARKETPLACE_LOCAL_MANIFEST_URL),
-      source: "local"
-    };
+    if (isTauriRuntime()) {
+      return {
+        manifest: JSON.parse(await loadBundledMarketplaceAsset("manifest.json")) as MarketplaceManifest,
+        source: "local"
+      };
+    }
+    return { manifest: await fetchMarketplaceManifest(MARKETPLACE_LOCAL_MANIFEST_URL), source: "local" };
   }
 }
 
@@ -356,6 +358,32 @@ function resolveMarketplaceAssetPath(path: string, source: "local" | "remote"): 
   if (/^https?:\/\//i.test(path)) return path;
   if (source === "remote") return `${MARKETPLACE_REMOTE_ROOT}/public${path}`;
   return path;
+}
+
+async function loadMarketplaceCsv(path: string, source: "local" | "remote"): Promise<string> {
+  if (source === "local" && isTauriRuntime()) {
+    return loadBundledMarketplaceAsset(toMarketplaceResourcePath(path));
+  }
+
+  const response = await fetch(resolveMarketplaceAssetPath(path, source));
+  if (!response.ok) throw new Error(`Could not download marketplace CSV (${response.status}).`);
+  return response.text();
+}
+
+function isTauriRuntime(): boolean {
+  return "__TAURI_INTERNALS__" in window;
+}
+
+function loadBundledMarketplaceAsset(relativePath: string): Promise<string> {
+  return invoke<string>("load_marketplace_asset", { relativePath });
+}
+
+function toMarketplaceResourcePath(path: string): string {
+  const normalized = path.replace(/^\/+/, "");
+  if (!normalized.startsWith("marketplace/")) {
+    throw new Error("Invalid marketplace asset path.");
+  }
+  return normalized.slice("marketplace/".length);
 }
 
 function groupMarketplaceItems(items: MarketplaceItem[]): Array<{ collection: string; items: MarketplaceItem[] }> {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.4
+
+- Added signed and notarized macOS release builds alongside Windows and Linux installers.
+- Improved Marketplace reliability, local device passkeys, achievement records, time tracking, and Math student-response input.
+
 ## 0.1.0
 
 - Initial local desktop release preparation.

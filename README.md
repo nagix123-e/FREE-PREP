@@ -37,7 +37,7 @@ If you only want to use the app, download the installer from GitHub Releases.
 ## Windows Install
 
 1. Open GitHub Releases.
-2. Download `SAT-Practice-Simulator_x.x.x_x64-setup.exe` if available, or the `.msi` installer.
+2. Download the `FREE PREP for Windows` `.exe` installer.
 3. Run the installer.
 4. Launch FREE PREP from the Start Menu.
 
@@ -46,7 +46,7 @@ Unsigned Windows apps may show a SmartScreen warning. This project does not requ
 ## macOS Install
 
 1. Open GitHub Releases.
-2. Download the latest `.dmg` file.
+2. Download the latest `FREE PREP for macOS` `.dmg` file.
 3. Open the `.dmg`.
 4. Drag FREE PREP into Applications.
 5. Launch it from Applications.
@@ -56,21 +56,14 @@ Current macOS release builds are intended to be signed and notarized through Git
 ## Linux Install
 
 1. Open GitHub Releases.
-2. Download the `.AppImage` or `.deb` file.
-3. For `.AppImage`, mark it executable and launch it.
-4. For `.deb`, install it with your package manager.
+2. Download the `FREE PREP for Linux` `.AppImage` file.
+3. Mark it executable and launch it.
 
 Example AppImage command:
 
 ```bash
 chmod +x SAT-Practice-Simulator*.AppImage
 ./SAT-Practice-Simulator*.AppImage
-```
-
-Example Debian/Ubuntu command:
-
-```bash
-sudo apt install ./SAT-Practice-Simulator*.deb
 ```
 
 ## CSV Import

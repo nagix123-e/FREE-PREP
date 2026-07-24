@@ -16,9 +16,11 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            args: "--bundles msi,nsis"
+            args: "--bundles nsis"
           - platform: ubuntu-latest
-            args: "--bundles deb,appimage"
+            args: "--bundles appimage"
+          - platform: macos-latest
+            args: "--bundles dmg"
 
     runs-on: ${{ matrix.platform }}
 
@@ -44,15 +46,47 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify macOS signing secrets
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          test -n "$APPLE_CERTIFICATE"
+          test -n "$APPLE_CERTIFICATE_PASSWORD"
+          test -n "$APPLE_SIGNING_IDENTITY"
+          test -n "$APPLE_API_ISSUER"
+          test -n "$APPLE_API_KEY_ID"
+          test -n "$APPLE_API_KEY_P8"
+
+      - name: Prepare App Store Connect API key
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$key_path"
+          echo "APPLE_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+
       - name: Build release bundles
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "FREE PREP ${{ github.ref_name }}"
           releaseBody: |
-            Desktop installers for FREE PREP on Windows and Linux.
+            FREE PREP for macOS, FREE PREP for Windows, and FREE PREP for Linux.
 
             Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
 

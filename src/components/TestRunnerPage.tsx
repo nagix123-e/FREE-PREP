@@ -51,6 +51,7 @@ export function TestRunnerPage() {
   const toggleEliminatedChoice = useTestSessionStore((state) => state.toggleEliminatedChoice);
   const enterModuleReview = useTestSessionStore((state) => state.enterModuleReview);
   const pauseAttempt = useTestSessionStore((state) => state.pauseAttempt);
+  const resumePausedAttempt = useTestSessionStore((state) => state.resumePausedAttempt);
   const questions = useTestSessionStore((state) => state.questions);
   const [menuOpen, setMenuOpen] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -75,6 +76,10 @@ export function TestRunnerPage() {
   }, [attempt, resumeAttempt, selectedAttemptId]);
 
   useEffect(() => {
+    setPaused(attempt?.status === "paused");
+  }, [attempt?.status]);
+
+  useEffect(() => {
     loadSettings()
       .then((settings) => {
         setTimerHidden(!settings.timerDefaultVisible);
@@ -83,12 +88,12 @@ export function TestRunnerPage() {
   }, [setTimerHidden]);
 
   useEffect(() => {
-    if (!attempt || remainingTimeSec <= 0) {
+    if (!attempt || paused || remainingTimeSec <= 0) {
       return;
     }
     const intervalId = window.setInterval(() => tickTimer(), 1000);
     return () => window.clearInterval(intervalId);
-  }, [attempt, remainingTimeSec, tickTimer]);
+  }, [attempt, paused, remainingTimeSec, tickTimer]);
 
   useEffect(() => {
     if (attempt && remainingTimeSec === 0) {
@@ -358,7 +363,10 @@ export function TestRunnerPage() {
         <PauseDialog
           exitButtonClassName={tutorial.active && tutorial.step === "pause_exit" ? "tutorial-active-target tutorial-target-ring" : ""}
           onExit={() => void handleTutorialPauseExit()}
-          onResume={() => setPaused(false)}
+          onResume={() => {
+            void resumePausedAttempt();
+            setPaused(false);
+          }}
         />
       ) : null}
       {notesOpen && currentQuestion.id ? (
