@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6
+
+- Fixed dashboard image export so charts and all dashboard sections, including Visual Question Performance, are included without clipping.
+
 ## 1.2.4
 
 - Added signed and notarized macOS release builds alongside Windows and Linux installers.
