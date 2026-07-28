@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import html2canvas from "html2canvas";
+import { useEffect, useRef, useState } from "react";
 import { CategoryTrendChart } from "./charts/CategoryTrendChart";
 import { SimpleLineChart } from "./charts/SimpleLineChart";
 import type { LineSeries } from "./charts/SimpleLineChart";
@@ -26,6 +27,8 @@ export function DashboardPage() {
   const [weaknessTrend, setWeaknessTrend] = useState<WeaknessTrend | null>(null);
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("last10");
   const [scoreMode, setScoreMode] = useState<ScoreTrendMode>("all");
+  const [downloadState, setDownloadState] = useState<"idle" | "saving" | "done">("idle");
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getDashboardSummary().then(setSummary).catch(() => setSummary(null));
@@ -49,88 +52,148 @@ export function DashboardPage() {
     return <div className="text-sm text-muted">Loading dashboard...</div>;
   }
 
+  async function downloadDashboardData() {
+    const dashboard = dashboardRef.current;
+    if (!dashboard || downloadState === "saving") return;
+    setDownloadState("saving");
+    try {
+      await document.fonts.ready;
+      const canvas = await html2canvas(dashboard, {
+        backgroundColor: "#f8fafc",
+        onclone: (clonedDocument) => {
+          const exportHeader = clonedDocument.querySelector<HTMLElement>("[data-dashboard-export-header]");
+          if (exportHeader) exportHeader.style.display = "block";
+        },
+        logging: false,
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+        width: dashboard.scrollWidth,
+        height: dashboard.scrollHeight,
+        windowWidth: dashboard.scrollWidth,
+        windowHeight: dashboard.scrollHeight
+      });
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 0.95));
+      if (!blob) throw new Error("Dashboard image could not be created.");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "free-prep-dashboard.png";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setDownloadState("done");
+      window.setTimeout(() => setDownloadState("idle"), 2600);
+    } catch {
+      setDownloadState("idle");
+    }
+  }
+
   return (
     <div className="space-y-7">
-      <section className="grid grid-cols-4 gap-5">
-        <Card label="Total Tests Taken" value={summary.totalTestsTaken.toString()} />
-        <Card label="Average Practice Score" value={summary.averagePracticeScore.toString()} />
-        <Card label="Best Practice Score" value={summary.bestPracticeScore.toString()} />
-        <Card label="Review List Count" value={summary.reviewListCount.toString()} />
-        <Card label="Average RW Score" value={summary.averageRwScore.toString()} />
-        <Card label="Average Math Score" value={summary.averageMathScore.toString()} />
-        <Card label="Total Questions Answered" value={summary.totalQuestionsAnswered.toString()} />
-        <Card label="Total Study Time" value={formatDuration(summary.totalStudyTimeSec)} />
-      </section>
-
-      <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="font-semibold">Score Trend Chart</h3>
-            <p className="mt-1 text-xs text-muted">Scores are estimates for practice only.</p>
-          </div>
-          <div className="grid min-w-[360px] grid-cols-2 gap-3">
-            <DropdownSelect
-              label="Range"
-              onChange={(value) => setTrendFilter(value as TrendFilter)}
-              options={[
-                { value: "last5", label: "Last 5 attempts" },
-                { value: "last10", label: "Last 10 attempts" },
-                { value: "last30days", label: "Last 30 days" },
-                { value: "all", label: "All time" }
-              ]}
-              value={trendFilter}
-            />
-            <DropdownSelect
-              label="Score"
-              onChange={(value) => setScoreMode(value as ScoreTrendMode)}
-              options={[
-                { value: "total", label: "Total" },
-                { value: "rw", label: "RW" },
-                { value: "math", label: "Math" },
-                { value: "all", label: "Total + RW + Math" }
-              ]}
-              value={scoreMode}
-            />
-          </div>
+      {downloadState === "done" ? (
+        <div className="download-confirmation-toast" role="status">
+          <span className="download-confirmation-toast__check">✓</span>
+          <span>
+            Dashboard downloaded
+            <span className="download-confirmation-toast__file">free-prep-dashboard.png</span>
+          </span>
         </div>
-        <div className="mt-5">
-          {scoreTrend.length === 0 ? (
-            <p className="text-sm text-muted">No graph data yet. Complete a practice test to see score trends.</p>
-          ) : (
-            <SimpleLineChart
-              max={scoreMode === "total" ? 1600 : scoreMode === "all" ? 1600 : 800}
-              min={scoreMode === "total" ? 400 : scoreMode === "all" ? 200 : 200}
-              series={buildScoreSeries(scoreTrend, scoreMode)}
-              xLabels={scoreTrend.map((point) => point.label)}
-            />
-          )}
+      ) : null}
+      <div className="flex justify-end">
+        <button
+          className={`rounded-full border border-line px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${downloadState === "done" ? "download-success-button text-white" : ""}`}
+          disabled={downloadState === "saving"}
+          onClick={downloadDashboardData}
+          type="button"
+        >
+          {downloadState === "done" ? "Downloaded" : downloadState === "saving" ? "Preparing..." : "Download dashboard data"}
+        </button>
+      </div>
+      <div className="space-y-7 bg-slate-50 p-1" ref={dashboardRef}>
+        <div className="hidden rounded-md border border-line bg-white px-8 py-7" data-dashboard-export-header>
+          <h2 className="text-2xl font-semibold">Dashboard</h2>
+          <p className="mt-2 text-sm text-muted">Practice Score and Estimated Score only.</p>
         </div>
-      </section>
+        <section className="grid grid-cols-4 gap-5">
+          <Card label="Total Tests Taken" value={summary.totalTestsTaken.toString()} />
+          <Card label="Average Practice Score" value={summary.averagePracticeScore.toString()} />
+          <Card label="Best Practice Score" value={summary.bestPracticeScore.toString()} />
+          <Card label="Review List Count" value={summary.reviewListCount.toString()} />
+          <Card label="Average RW Score" value={summary.averageRwScore.toString()} />
+          <Card label="Average Math Score" value={summary.averageMathScore.toString()} />
+          <Card label="Total Questions Answered" value={summary.totalQuestionsAnswered.toString()} />
+          <Card label="Total Study Time" value={formatDuration(summary.totalStudyTimeSec)} />
+        </section>
 
-      <section className="grid grid-cols-2 gap-5">
-        <CategoryTrendChart points={domainTrend} title="Domain Trend Chart" />
-        <CategoryTrendChart points={skillTrend} title="Skill Trend Chart" />
-      </section>
-
-      <section className="grid grid-cols-2 gap-5">
-        <WeaknessTrendPanel trend={weaknessTrend} />
         <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
-          <h3 className="font-semibold">Recommended Practice</h3>
-          <div className="mt-5 space-y-3">
-            {buildRecommendedPractice(summary.weakAreas).map((item) => (
-              <div className="rounded-md border border-line bg-slate-50 p-4 text-sm" key={item}>{item}</div>
-            ))}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-semibold">Score Trend Chart</h3>
+              <p className="mt-1 text-xs text-muted">Scores are estimates for practice only.</p>
+            </div>
+            <div className="grid min-w-[360px] grid-cols-2 gap-3">
+              <DropdownSelect
+                label="Range"
+                onChange={(value) => setTrendFilter(value as TrendFilter)}
+                options={[
+                  { value: "last5", label: "Last 5 attempts" },
+                  { value: "last10", label: "Last 10 attempts" },
+                  { value: "last30days", label: "Last 30 days" },
+                  { value: "all", label: "All time" }
+                ]}
+                value={trendFilter}
+              />
+              <DropdownSelect
+                label="Score"
+                onChange={(value) => setScoreMode(value as ScoreTrendMode)}
+                options={[
+                  { value: "total", label: "Total" },
+                  { value: "rw", label: "RW" },
+                  { value: "math", label: "Math" },
+                  { value: "all", label: "Total + RW + Math" }
+                ]}
+                value={scoreMode}
+              />
+            </div>
+          </div>
+          <div className="mt-5">
+            {scoreTrend.length === 0 ? (
+              <p className="text-sm text-muted">No graph data yet. Complete a practice test to see score trends.</p>
+            ) : (
+              <SimpleLineChart
+                max={scoreMode === "total" ? 1600 : scoreMode === "all" ? 1600 : 800}
+                min={scoreMode === "total" ? 400 : scoreMode === "all" ? 200 : 200}
+                series={buildScoreSeries(scoreTrend, scoreMode)}
+                xLabels={scoreTrend.map((point) => point.label)}
+              />
+            )}
           </div>
         </section>
-      </section>
 
-      <BreakdownTable rows={summary.weakAreas} title="Weak Areas" />
-      <BreakdownTable rows={summary.strongAreas} title="Strong Areas" />
-      <BreakdownTable
-        labelHeader="Visual Type"
-        rows={summary.visualPerformance}
-        title="Visual Question Performance"
-      />
+        <section className="grid grid-cols-2 gap-5">
+          <CategoryTrendChart points={domainTrend} title="Domain Trend Chart" />
+          <CategoryTrendChart points={skillTrend} title="Skill Trend Chart" />
+        </section>
+
+        <section className="grid grid-cols-2 gap-5">
+          <WeaknessTrendPanel trend={weaknessTrend} />
+          <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
+            <h3 className="font-semibold">Recommended Practice</h3>
+            <div className="mt-5 space-y-3">
+              {buildRecommendedPractice(summary.weakAreas).map((item) => (
+                <div className="rounded-md border border-line bg-slate-50 p-4 text-sm" key={item}>{item}</div>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        <BreakdownTable rows={summary.weakAreas} title="Weak Areas" />
+        <BreakdownTable rows={summary.strongAreas} title="Strong Areas" />
+        <BreakdownTable
+          labelHeader="Visual Type"
+          rows={summary.visualPerformance}
+          title="Visual Question Performance"
+        />
+      </div>
     </div>
   );
 }

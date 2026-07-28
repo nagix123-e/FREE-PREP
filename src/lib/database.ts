@@ -581,6 +581,24 @@ export async function updateQuestionSetQuestions(input: {
   return (await getQuestionSet(input.questionSetId))!;
 }
 
+export async function cloneQuestionSetForEditing(questionSetId: number): Promise<QuestionSet> {
+  const source = await getQuestionSet(questionSetId);
+  if (!source) throw new Error("Question set could not be found.");
+  const questions = await listQuestions(questionSetId);
+  if (questions.length === 0) throw new Error("This question set has no editable questions.");
+  return saveQuestionSet({
+    name: `${source.name} (copy)`,
+    description: source.description,
+    questions: questions.map(({ id, questionSetId: _questionSetId, ...question }) => question),
+    status: source.status,
+    packageType: source.packageType,
+    sourceFilename: source.sourceFilename,
+    rowCount: source.rowCount,
+    sectionCounts: source.sectionCounts,
+    previewPassword: source.previewPassword
+  });
+}
+
 export async function setQuestionSetEditPasskey(questionSetId: number, credentialId: string): Promise<QuestionSet> {
   const db = await getDatabase();
   const set = await getQuestionSet(questionSetId);

@@ -6,6 +6,7 @@ import {
   listQuestions,
   listTeacherDrafts,
   deleteTeacherDraft,
+  cloneQuestionSetForEditing,
   saveTeacherDraft,
   setQuestionSetEditPasskey,
   updateQuestionSetQuestions,
@@ -334,6 +335,16 @@ export function TeacherBuilderPage() {
     }
   }
 
+  async function cloneAndLoadQuestionSet(set: QuestionSet) {
+    try {
+      const copy = await cloneQuestionSetForEditing(set.id);
+      setQuestionSets(await listQuestionSets());
+      await loadQuestionSetForEditing(copy);
+    } catch (error) {
+      setDbError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function saveImportedEdits() {
     if (!loadedSetId) return;
     if (!summary.valid) {
@@ -362,6 +373,10 @@ export function TeacherBuilderPage() {
   }
 
   function requestQuestionSetEdit(set: QuestionSet) {
+    if (set.hasAttempts) {
+      void cloneAndLoadQuestionSet(set);
+      return;
+    }
     if (!set.previewPassword) {
       void loadQuestionSetForEditing(set);
       return;
@@ -556,8 +571,8 @@ export function TeacherBuilderPage() {
             >
               <option value="">Choose a local set to edit</option>
               {questionSets.map((set) => (
-                <option disabled={set.hasAttempts} key={set.id} value={set.id}>
-                  {set.name}{set.hasAttempts ? " (has practice history)" : ""}
+                <option key={set.id} value={set.id}>
+                  {set.name}{set.hasAttempts ? " (copy to edit; has practice history)" : ""}
                 </option>
               ))}
             </select>

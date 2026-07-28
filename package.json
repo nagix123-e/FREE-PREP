@@ -19,6 +19,7 @@
     "@fontsource/league-spartan": "^5.2.8",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-sql": "^2.2.0",
+    "html2canvas": "^1.4.1",
     "katex": "^0.16.11",
     "papaparse": "^5.5.3",
     "react": "^19.0.0",
