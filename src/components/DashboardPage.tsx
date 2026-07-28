@@ -19,6 +19,10 @@ import type { DashboardSummary } from "../types";
 import { BreakdownTable } from "./result/BreakdownTable";
 import { DropdownSelect } from "./ui/DropdownSelect";
 
+const DASHBOARD_EXPORT_WIDTH = 1280;
+const DASHBOARD_EXPORT_MAX_DIMENSION = 8000;
+const DASHBOARD_EXPORT_MAX_PIXELS = 14_000_000;
+
 export function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [scoreTrend, setScoreTrend] = useState<ScoreTrendPoint[]>([]);
@@ -56,21 +60,26 @@ export function DashboardPage() {
     const dashboard = dashboardRef.current;
     if (!dashboard || downloadState === "saving") return;
     setDownloadState("saving");
+    let exportHost: HTMLDivElement | null = null;
     try {
-      await document.fonts.ready;
-      const canvas = await html2canvas(dashboard, {
+      await waitForDashboardExportFonts();
+      const exportRoot = dashboard.cloneNode(true) as HTMLDivElement;
+      exportHost = prepareDashboardExportClone(exportRoot);
+      await waitForDashboardExportLayout();
+
+      const { width: exportWidth, height: exportHeight } = getDashboardExportBounds(exportRoot);
+      const scale = getDashboardExportScale(exportWidth, exportHeight);
+      const canvas = await html2canvas(exportRoot, {
         backgroundColor: "#f8fafc",
-        onclone: (clonedDocument) => {
-          const exportHeader = clonedDocument.querySelector<HTMLElement>("[data-dashboard-export-header]");
-          if (exportHeader) exportHeader.style.display = "block";
-        },
         logging: false,
-        scale: Math.min(2, window.devicePixelRatio || 1),
+        scale,
+        scrollX: 0,
+        scrollY: 0,
         useCORS: true,
-        width: dashboard.scrollWidth,
-        height: dashboard.scrollHeight,
-        windowWidth: dashboard.scrollWidth,
-        windowHeight: dashboard.scrollHeight
+        width: exportWidth,
+        height: exportHeight,
+        windowWidth: DASHBOARD_EXPORT_WIDTH,
+        windowHeight: exportHeight
       });
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 0.95));
       if (!blob) throw new Error("Dashboard image could not be created.");
@@ -84,6 +93,8 @@ export function DashboardPage() {
       window.setTimeout(() => setDownloadState("idle"), 2600);
     } catch {
       setDownloadState("idle");
+    } finally {
+      exportHost?.remove();
     }
   }
 
@@ -196,6 +207,86 @@ export function DashboardPage() {
       </div>
     </div>
   );
+}
+
+function prepareDashboardExportClone(exportRoot: HTMLDivElement): HTMLDivElement {
+  const exportHost = document.createElement("div");
+  exportHost.setAttribute("aria-hidden", "true");
+  Object.assign(exportHost.style, {
+    background: "#f8fafc",
+    boxSizing: "border-box",
+    left: "-100000px",
+    pointerEvents: "none",
+    position: "absolute",
+    top: "0",
+    width: `${DASHBOARD_EXPORT_WIDTH}px`
+  });
+
+  Object.assign(exportRoot.style, {
+    boxSizing: "border-box",
+    maxWidth: "none",
+    overflow: "visible",
+    width: `${DASHBOARD_EXPORT_WIDTH}px`
+  });
+
+  const exportHeader = exportRoot.querySelector<HTMLElement>("[data-dashboard-export-header]");
+  if (exportHeader) {
+    exportHeader.classList.remove("hidden");
+    exportHeader.style.display = "block";
+  }
+
+  exportRoot.querySelectorAll<HTMLElement>(".overflow-auto, .safe-table-card").forEach((element) => {
+    element.style.overflow = "visible";
+    element.style.maxHeight = "none";
+  });
+  exportRoot.querySelectorAll<SVGElement>("svg").forEach((svg) => {
+    svg.style.display = "block";
+    svg.style.maxWidth = "none";
+    svg.style.overflow = "visible";
+    svg.style.width = "100%";
+  });
+
+  exportHost.appendChild(exportRoot);
+  document.body.appendChild(exportHost);
+  return exportHost;
+}
+
+async function waitForDashboardExportLayout(): Promise<void> {
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
+}
+
+async function waitForDashboardExportFonts(): Promise<void> {
+  await Promise.race([
+    document.fonts.ready.then(() => undefined),
+    new Promise<void>((resolve) => window.setTimeout(resolve, 1000))
+  ]);
+}
+
+function getDashboardExportBounds(exportRoot: HTMLDivElement): { width: number; height: number } {
+  const rootRect = exportRoot.getBoundingClientRect();
+  let contentHeight = exportRoot.scrollHeight;
+
+  const finalTableSection = exportRoot.querySelector<HTMLElement>(".safe-table-card:last-child");
+  const finalTable = finalTableSection?.querySelector<HTMLTableElement>("table");
+  if (finalTable) {
+    const finalTableBottom = finalTable.getBoundingClientRect().bottom - rootRect.top;
+    contentHeight = Math.max(contentHeight, finalTableBottom);
+  }
+
+  return {
+    width: Math.ceil(exportRoot.scrollWidth),
+    height: Math.ceil(contentHeight) + 24
+  };
+}
+
+function getDashboardExportScale(width: number, height: number): number {
+  const deviceScale = Math.min(2, window.devicePixelRatio || 1);
+  const dimensionScale = Math.min(
+    DASHBOARD_EXPORT_MAX_DIMENSION / Math.max(1, width),
+    DASHBOARD_EXPORT_MAX_DIMENSION / Math.max(1, height)
+  );
+  const pixelScale = Math.sqrt(DASHBOARD_EXPORT_MAX_PIXELS / Math.max(1, width * height));
+  return Math.max(1, Math.min(deviceScale, dimensionScale, pixelScale));
 }
 
 function buildScoreSeries(points: ScoreTrendPoint[], mode: ScoreTrendMode): LineSeries[] {

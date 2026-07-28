@@ -27,7 +27,7 @@ export function SimpleLineChart({
   } | null>(null);
   const width = 640;
   const height = 220;
-  const padding = 32;
+  const padding = 40;
   const plotWidth = width - padding * 2;
   const plotHeight = height - padding * 2;
   const validSeries = series
