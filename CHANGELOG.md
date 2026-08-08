@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.7
+
+- Added local-first Spaced Review with automatic scheduling for incorrect responses and existing local mistake-history backfill.
+
 ## 1.2.6
 
 - Fixed dashboard image export so charts and all dashboard sections, including Visual Question Performance, are included without clipping.
