@@ -271,6 +271,28 @@ export async function initializeSchema(db: Database): Promise<void> {
       data_json TEXT NOT NULL
     )
   `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS spaced_review_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_set_id INTEGER NOT NULL,
+      question_id INTEGER NOT NULL,
+      stage INTEGER NOT NULL DEFAULT 0,
+      due_at TEXT NOT NULL,
+      last_reviewed_at TEXT,
+      last_result TEXT,
+      last_source_attempt_id INTEGER,
+      last_review_attempt_id INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (question_set_id) REFERENCES question_sets(id) ON DELETE CASCADE,
+      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+      UNIQUE(question_set_id, question_id)
+    )
+  `);
+  await db.execute(
+    "CREATE INDEX IF NOT EXISTS spaced_review_items_due_at_idx ON spaced_review_items(due_at)"
+  );
+  await ensureColumn(db, "spaced_review_items", "last_source_attempt_id", "INTEGER");
 }
 
 async function ensureColumn(
@@ -416,6 +438,7 @@ export async function deleteQuestionSet(id: number): Promise<void> {
     "DELETE FROM review_list WHERE question_id IN (SELECT id FROM questions WHERE question_set_id = $1)",
     [id]
   );
+  await db.execute("DELETE FROM spaced_review_items WHERE question_set_id = $1", [id]);
   await db.execute("DELETE FROM score_conversions WHERE question_set_id = $1", [id]);
   await db.execute("DELETE FROM attempts WHERE question_set_id = $1", [id]);
   await db.execute("DELETE FROM questions WHERE question_set_id = $1", [id]);

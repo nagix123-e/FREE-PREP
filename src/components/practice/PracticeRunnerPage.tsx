@@ -300,6 +300,7 @@ function formatPracticeTitle(mode: ReturnType<typeof usePracticeStore.getState>[
   if (mode === "mistake_practice") return "Mistake Practice";
   if (mode === "domain_practice") return "Domain Practice";
   if (mode === "review_list_practice") return "Review List Practice";
+  if (mode === "spaced_review") return "Spaced Review";
   return "Focused Practice";
 }
 

@@ -45,10 +45,12 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   timerHidden: false,
   activeQuestionStartedAtMs: Date.now(),
   startPractice: async (config) => {
-    const [attemptId, questions] = await Promise.all([
-      createPracticeAttempt(config),
-      buildPracticeQuestions(config)
-    ]);
+    const questions = await buildPracticeQuestions(config);
+    if (questions.length === 0) {
+      throw new Error("No practice questions are available.");
+    }
+    const effectiveConfig = { ...config, questionCount: questions.length };
+    const attemptId = await createPracticeAttempt(effectiveConfig);
     set({
       attemptId,
       questionSetId: config.questionSetId,
@@ -56,9 +58,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       questions,
       responsesByQuestionId: {},
       index: 0,
-      remainingTimeSec: config.timerEnabled ? config.questionCount * 90 : 0,
-      timerEnabled: config.timerEnabled,
-      timerHidden: !config.timerEnabled,
+      remainingTimeSec: effectiveConfig.timerEnabled ? effectiveConfig.questionCount * 90 : 0,
+      timerEnabled: effectiveConfig.timerEnabled,
+      timerHidden: !effectiveConfig.timerEnabled,
       activeQuestionStartedAtMs: Date.now()
     });
     return attemptId;

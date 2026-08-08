@@ -1,8 +1,9 @@
 import { createSqliteIntegerId, getDatabase, listQuestions } from "../lib/database";
 import type { Question, Section } from "../types";
 import { gradeAttempt } from "./scoringService";
+import { listDueSpacedReviewItems, SPACED_REVIEW_SESSION_LIMIT } from "./spacedReviewService";
 
-export type PracticeMode = "mistake_practice" | "domain_practice" | "review_list_practice";
+export type PracticeMode = "mistake_practice" | "domain_practice" | "review_list_practice" | "spaced_review";
 export type DomainPracticeScope = "full" | "rw" | "math";
 
 export interface PracticeConfig {
@@ -25,6 +26,9 @@ export async function buildPracticeQuestions(config: PracticeConfig): Promise<Qu
   }
   if (config.mode === "domain_practice") {
     return getDomainQuestions(config);
+  }
+  if (config.mode === "spaced_review") {
+    return listDueSpacedReviewItems(Math.min(config.questionCount, SPACED_REVIEW_SESSION_LIMIT));
   }
   return [];
 }

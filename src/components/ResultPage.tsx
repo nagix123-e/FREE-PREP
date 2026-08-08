@@ -60,7 +60,13 @@ export function ResultPage() {
   const domainPracticeSummary =
     result.attemptMode === "domain_practice" ? buildDomainPracticeSummary(result) : null;
   const focusedPracticeSummary =
-    result.attemptMode === "mistake_practice" ? buildFocusedPracticeSummary(result, "Mistake Practice Score") : null;
+    result.attemptMode === "mistake_practice"
+      ? buildFocusedPracticeSummary(result, "Mistake Practice Score")
+      : result.attemptMode === "review_list_practice"
+        ? buildFocusedPracticeSummary(result, "Review List Practice Score")
+        : result.attemptMode === "spaced_review"
+          ? buildFocusedPracticeSummary(result, "Spaced Review Score")
+          : null;
   const practiceSummary = domainPracticeSummary ?? focusedPracticeSummary;
   const hasTotalScore = result.totalScore !== null;
   const hasRwScore = result.rwScore !== null;

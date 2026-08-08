@@ -26,7 +26,8 @@ export type AttemptMode =
   | "full_hard_math_practice"
   | "mistake_practice"
   | "domain_practice"
-  | "review_list_practice";
+  | "review_list_practice"
+  | "spaced_review";
 
 export const REQUIRED_HEADERS = [
   "test_id",
@@ -352,6 +353,7 @@ export type RouteKey =
   | "history"
   | "achievements"
   | "dashboard"
+  | "spacedReview"
   | "mistakePractice"
   | "domainPractice"
   | "reviewList"

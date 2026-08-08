@@ -68,6 +68,14 @@ export function getModuleIndexesForCourse(course: PracticeTestCourse): number[] 
 }
 
 export function getModuleIndexesForAttemptMode(mode: AttemptMode): number[] {
+  if (
+    mode === "domain_practice" ||
+    mode === "mistake_practice" ||
+    mode === "review_list_practice" ||
+    mode === "spaced_review"
+  ) {
+    return [];
+  }
   if (mode === "full_hard_rw_practice") {
     return getModuleIndexesForCourse("rw");
   }

@@ -165,11 +165,12 @@ function formatAttemptMode(mode: AttemptSummary["mode"]): string {
   if (mode === "domain_practice") return "Practice: Domain";
   if (mode === "mistake_practice") return "Practice: Mistakes";
   if (mode === "review_list_practice") return "Practice: Review List";
+  if (mode === "spaced_review") return "Spaced Review";
   if (mode === "full_hard_rw_practice") return "RW Practice Test";
   if (mode === "full_hard_math_practice") return "Math Practice Test";
   return "Full Hard Practice Test";
 }
 
 function shouldHideSatScores(attempt: AttemptSummary): boolean {
-  return attempt.mode === "domain_practice";
+  return attempt.mode === "domain_practice" || attempt.mode === "spaced_review";
 }

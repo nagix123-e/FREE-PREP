@@ -970,7 +970,12 @@ function makePairedTotalAchievementItem(pair: { rw: AttemptSummary; math: Attemp
 }
 
 function isFocusedPracticeAttempt(mode: AttemptSummary["mode"]): boolean {
-  return mode === "domain_practice" || mode === "mistake_practice" || mode === "review_list_practice";
+  return (
+    mode === "domain_practice" ||
+    mode === "mistake_practice" ||
+    mode === "review_list_practice" ||
+    mode === "spaced_review"
+  );
 }
 
 function makeAchievementItem(attempt: AttemptSummary, category: AchievementCategory): AchievementItem[] {

@@ -6,7 +6,9 @@ import type { DashboardSummary } from "../types";
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const attempts = await listAttemptHistory();
-  const completed = attempts.filter((attempt) => attempt.status === "completed");
+  const completed = attempts.filter(
+    (attempt) => attempt.status === "completed" && attempt.mode !== "spaced_review"
+  );
   const detailedCompleted = completed.filter((attempt) => !attempt.archived);
   const results = await Promise.all(detailedCompleted.slice(0, 12).map((attempt) => getScoreResult(attempt.id)));
   const allDomainRows = results.flatMap((result) => result.domainBreakdown);

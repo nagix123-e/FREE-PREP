@@ -1,5 +1,6 @@
 import { getDatabase, listQuestions } from "../lib/database";
 import { getModuleIndexesForAttemptMode, TEST_MODULES } from "../lib/testPlan";
+import { scheduleIncorrectQuestions, updateSpacedReviewResults } from "./spacedReviewService";
 import type {
   AttemptMode,
   BreakdownRow,
@@ -191,6 +192,12 @@ export async function gradeAttempt(attemptId: number, options: { persist?: boole
        WHERE id = $5`,
       [totalScore, rwScore, mathScore, new Date().toISOString(), attemptId]
     );
+
+    if (attempt.mode === "spaced_review") {
+      await updateSpacedReviewResults({ attemptId, gradedQuestions });
+    } else {
+      await scheduleIncorrectQuestions({ attemptId, gradedQuestions });
+    }
   }
 
   if (shouldPersist && complementaryAttempt && totalScore !== null) {
@@ -309,7 +316,12 @@ async function listQuestionsForQuestionIds(questionIds: number[]): Promise<Quest
 }
 
 function isFocusedPracticeMode(mode: AttemptMode): boolean {
-  return mode === "domain_practice" || mode === "mistake_practice" || mode === "review_list_practice";
+  return (
+    mode === "domain_practice" ||
+    mode === "mistake_practice" ||
+    mode === "review_list_practice" ||
+    mode === "spaced_review"
+  );
 }
 
 function buildModuleBreakdown(gradedQuestions: GradedQuestion[], moduleIndexes: number[]): BreakdownRow[] {

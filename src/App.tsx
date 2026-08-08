@@ -11,6 +11,7 @@ import { ReviewAnswersPage } from "./components/ReviewAnswersPage";
 import { ReviewListPage } from "./components/ReviewListPage";
 import { ScoreHistoryPage } from "./components/ScoreHistoryPage";
 import { AchievementsPage } from "./components/AchievementsPage";
+import { SpacedReviewPage } from "./components/SpacedReviewPage";
 import { SectionBreakPage } from "./components/SectionBreakPage";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { TestRunnerPage } from "./components/TestRunnerPage";
@@ -36,6 +37,7 @@ const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
   { route: "sets", label: "Question Sets" },
   { route: "history", label: "Score History" },
   { route: "achievements", label: "Achievements" },
+  { route: "spacedReview", label: "Spaced Review" },
   { route: "mistakePractice", label: "Mistake Practice" },
   { route: "domainPractice", label: "Domain Practice" },
   { route: "reviewList", label: "Review List" },
@@ -231,6 +233,7 @@ export default function App() {
             {route === "reviewAnswers" ? <ReviewAnswersPage /> : null}
             {route === "history" ? <ScoreHistoryPage /> : null}
             {route === "achievements" ? <AchievementsPage /> : null}
+            {route === "spacedReview" ? <SpacedReviewPage /> : null}
             {route === "mistakePractice" ? <PracticeSetupPage mode="mistake_practice" /> : null}
             {route === "domainPractice" ? <PracticeSetupPage mode="domain_practice" /> : null}
             {route === "reviewListPractice" ? <PracticeSetupPage mode="review_list_practice" /> : null}
@@ -363,6 +366,7 @@ function titleForRoute(route: RouteKey): string {
     reviewAnswers: "Review Answers",
     history: "Score History",
     achievements: "Achievements",
+    spacedReview: "Spaced Review",
     mistakePractice: "Mistake Practice",
     domainPractice: "Domain Practice",
     reviewList: "Review List",
