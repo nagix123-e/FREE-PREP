@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.7.1
+
+- Remove a Spaced Review item from the due queue after two consecutive correct review responses, while retaining completion state so historical mistake backfill does not re-add it.
+
 ## 1.2.7
 
 - Added local-first Spaced Review with automatic scheduling for incorrect responses and existing local mistake-history backfill.

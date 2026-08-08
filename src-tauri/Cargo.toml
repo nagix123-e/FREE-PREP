@@ -1,6 +1,6 @@
 [package]
 name = "sat-practice-simulator"
-version = "1.2.6"
+version = "1.2.7"
 description = "Free Practice Simulator for the SAT® Exam."
 authors = ["FREE PREP"]
 edition = "2021"

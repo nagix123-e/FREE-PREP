@@ -50,6 +50,8 @@ export async function scheduleIncorrectQuestion(input: {
       stage = 0,
       due_at = excluded.due_at,
       last_result = 'incorrect',
+      correct_streak = 0,
+      resolved_at = NULL,
       last_source_attempt_id = excluded.last_source_attempt_id,
       updated_at = excluded.updated_at
     WHERE spaced_review_items.last_source_attempt_id IS NULL
@@ -78,7 +80,8 @@ export async function getSpacedReviewSummary(now = new Date()): Promise<SpacedRe
       SUM(CASE WHEN due_at > $1 THEN 1 ELSE 0 END) AS upcoming,
       COUNT(*) AS total_scheduled,
       MIN(CASE WHEN due_at > $1 THEN due_at END) AS next_due_at
-     FROM spaced_review_items`,
+     FROM spaced_review_items
+     WHERE resolved_at IS NULL`,
     [nowIso, startOfTomorrow.toISOString()]
   );
   const row = rows[0];
@@ -98,7 +101,8 @@ export async function listDueSpacedReviewItems(limit = SPACED_REVIEW_SESSION_LIM
   const rows = await db.select<SpacedReviewItemRow[]>(
     `SELECT question_set_id, question_id
      FROM spaced_review_items
-     WHERE due_at <= $1
+     WHERE resolved_at IS NULL
+       AND due_at <= $1
      ORDER BY due_at ASC, stage ASC, question_set_id ASC, question_id ASC
      LIMIT $2`,
     [now.toISOString(), Math.max(1, Math.min(limit, SPACED_REVIEW_SESSION_LIMIT))]
@@ -124,8 +128,13 @@ export async function updateSpacedReviewResults(input: {
     if (!item.isAnswered || !item.question.id || !item.question.questionSetId) {
       continue;
     }
-    const rows = await db.select<Array<{ id: number; stage: number; last_review_attempt_id: number | null }>>(
-      `SELECT id, stage, last_review_attempt_id
+    const rows = await db.select<Array<{
+      id: number;
+      stage: number;
+      correct_streak: number;
+      last_review_attempt_id: number | null;
+    }>>(
+      `SELECT id, stage, correct_streak, last_review_attempt_id
        FROM spaced_review_items
        WHERE question_set_id = $1 AND question_id = $2`,
       [item.question.questionSetId, item.question.id]
@@ -135,6 +144,8 @@ export async function updateSpacedReviewResults(input: {
       continue;
     }
 
+    const correctStreak = item.isCorrect ? scheduled.correct_streak + 1 : 0;
+    const isResolved = item.isCorrect && correctStreak >= 2;
     const stage = item.isCorrect ? Math.min(scheduled.stage + 1, SPACED_REVIEW_INTERVAL_DAYS.length) : 0;
     const dueAt = addLocalCalendarDays(now, intervalDaysForStage(stage));
     await db.execute(
@@ -143,11 +154,22 @@ export async function updateSpacedReviewResults(input: {
            due_at = $2,
            last_reviewed_at = $3,
            last_result = $4,
-           last_review_attempt_id = $5,
+           correct_streak = $5,
+           resolved_at = $6,
+           last_review_attempt_id = $7,
            updated_at = $3
-       WHERE id = $6
-         AND (last_review_attempt_id IS NULL OR last_review_attempt_id != $5)`,
-      [stage, dueAt, nowIso, item.isCorrect ? "correct" : "incorrect", input.attemptId, scheduled.id]
+       WHERE id = $8
+         AND (last_review_attempt_id IS NULL OR last_review_attempt_id != $7)`,
+      [
+        stage,
+        dueAt,
+        nowIso,
+        item.isCorrect ? "correct" : "incorrect",
+        correctStreak,
+        isResolved ? nowIso : null,
+        input.attemptId,
+        scheduled.id
+      ]
     );
   }
 }

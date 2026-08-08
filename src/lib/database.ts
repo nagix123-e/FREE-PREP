@@ -280,6 +280,8 @@ export async function initializeSchema(db: Database): Promise<void> {
       due_at TEXT NOT NULL,
       last_reviewed_at TEXT,
       last_result TEXT,
+      correct_streak INTEGER NOT NULL DEFAULT 0,
+      resolved_at TEXT,
       last_source_attempt_id INTEGER,
       last_review_attempt_id INTEGER,
       created_at TEXT NOT NULL,
@@ -293,6 +295,8 @@ export async function initializeSchema(db: Database): Promise<void> {
     "CREATE INDEX IF NOT EXISTS spaced_review_items_due_at_idx ON spaced_review_items(due_at)"
   );
   await ensureColumn(db, "spaced_review_items", "last_source_attempt_id", "INTEGER");
+  await ensureColumn(db, "spaced_review_items", "correct_streak", "INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(db, "spaced_review_items", "resolved_at", "TEXT");
 }
 
 async function ensureColumn(
