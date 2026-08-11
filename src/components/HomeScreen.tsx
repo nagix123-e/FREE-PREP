@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getDashboardSummary } from "../services/dashboardService";
 import type { DashboardSummary } from "../types";
 import { useAppStore } from "../store/appStore";
+import { useSystemLanguage } from "../i18n";
 
 export function HomeScreen() {
+  const { t } = useSystemLanguage();
   const { questionSets, navigate } = useAppStore();
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const totalQuestions = questionSets.reduce((sum, set) => sum + set.totalQuestions, 0);
@@ -22,7 +24,7 @@ export function HomeScreen() {
     <div className="space-y-7">
       <section className="home-overview-grid grid gap-6">
         <div className="safe-card-padding-lg rounded-md border border-line bg-white p-7 shadow-panel">
-          <h2 className="text-2xl font-semibold tracking-tight">Build a local SAT practice library.</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{t("buildLibrary")}</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
             Import GPT-generated SAT-style CSV files, validate full, RW-only, or Math-only packages,
             and keep saved question sets on this device for future practice sessions.
@@ -44,24 +46,24 @@ export function HomeScreen() {
               onClick={() => navigate("sets")}
               type="button"
             >
-              View Sets
+              {t("viewSets")}
             </button>
           </div>
         </div>
 
         <div className="safe-card-padding-lg rounded-md border border-line bg-white p-7 shadow-panel">
-          <h3 className="text-sm font-semibold uppercase text-slate-500">Library Status</h3>
+          <h3 className="text-sm font-semibold uppercase text-slate-500">{t("libraryStatus")}</h3>
           <div className="mt-5 grid grid-cols-2 gap-4">
-            <Metric label="Question Sets" value={questionSets.length.toString()} />
-            <Metric label="Questions" value={totalQuestions.toString()} />
-            <Metric label="Review List" value={(dashboard?.reviewListCount ?? 0).toString()} />
-            <Metric label="Best Score" value={(dashboard?.bestPracticeScore ?? 0).toString()} />
+            <Metric label={t("questionSetsCount")} value={questionSets.length.toString()} />
+            <Metric label={t("questions")} value={totalQuestions.toString()} />
+            <Metric label={t("reviewListCount")} value={(dashboard?.reviewListCount ?? 0).toString()} />
+            <Metric label={t("bestScore")} value={(dashboard?.bestPracticeScore ?? 0).toString()} />
           </div>
         </div>
       </section>
 
       <section className="grid grid-cols-3 gap-5">
-        <DashboardPanel title="Recent Scores">
+        <DashboardPanel title={t("recentScores")}>
           {(dashboard?.recentScores ?? []).slice(0, 3).map((attempt) => (
             <button
               className="flex w-full items-center justify-between gap-4 rounded-md border border-line bg-slate-50 p-4 text-left text-sm"
@@ -74,7 +76,7 @@ export function HomeScreen() {
             </button>
           ))}
         </DashboardPanel>
-        <DashboardPanel title="Weak Areas">
+        <DashboardPanel title={t("weakAreas")}>
           {(dashboard?.weakAreas ?? []).slice(0, 4).map((area) => (
             <div className="rounded-md border border-red-100 bg-red-50 p-4 text-sm" key={area.label}>
               <div className="font-semibold text-red-800">{area.label}</div>
@@ -82,11 +84,11 @@ export function HomeScreen() {
             </div>
           ))}
         </DashboardPanel>
-        <DashboardPanel title="Upcoming Goals">
+        <DashboardPanel title={t("upcomingGoals")}>
           {["Complete one timed module", "Review missed questions", "Practice one weak area"].map((item) => (
             <div className="rounded-md border border-line bg-slate-50 p-4" key={item}>
               <div className="font-semibold text-ink">{item}</div>
-              <div className="mt-1 text-xs text-muted">Suggested next step</div>
+              <div className="mt-1 text-xs text-muted">{t("suggestedNextStep")}</div>
             </div>
           ))}
         </DashboardPanel>

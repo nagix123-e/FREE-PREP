@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { getPackageTypeLabel } from "../lib/csvValidation";
 import { combineSectionQuestionSets, deleteQuestionSet, listQuestionSets } from "../lib/database";
 import { useAppStore } from "../store/appStore";
+import { useSystemLanguage } from "../i18n";
 import { DropdownSelect, type DropdownOption } from "./ui/DropdownSelect";
 
 export function QuestionSetsScreen() {
+  const { t } = useSystemLanguage();
   const { questionSets, setQuestionSets, navigate, setDbError, tutorial, setTutorialStep } = useAppStore();
   const [loading, setLoading] = useState(false);
   const [deletingSetId, setDeletingSetId] = useState<number | null>(null);
@@ -89,8 +91,8 @@ export function QuestionSetsScreen() {
     <section className="rounded-md border border-line bg-white shadow-panel">
       <div className="flex items-center justify-between border-b border-line px-6 py-4">
         <div>
-          <h2 className="text-lg font-semibold">Saved Question Sets</h2>
-          <p className="mt-1 text-sm text-muted">Imported sets are stored in local SQLite.</p>
+          <h2 className="text-lg font-semibold">{t("savedQuestionSets")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("importedLocally")}</p>
         </div>
       </div>
 
@@ -142,7 +144,7 @@ export function QuestionSetsScreen() {
         ) : null}
       </div>
 
-      {loading ? <div className="p-6 text-sm text-muted">Loading...</div> : null}
+      {loading ? <div className="p-6 text-sm text-muted">{t("loading")}</div> : null}
       {deleteError ? (
         <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {deleteError}
@@ -151,19 +153,19 @@ export function QuestionSetsScreen() {
 
       {!loading && questionSets.length === 0 ? (
         <div className="p-10 text-center">
-          <h3 className="text-base font-semibold">No question sets yet</h3>
-          <p className="mt-2 text-sm text-muted">Import a valid full-test CSV to begin.</p>
+          <h3 className="text-base font-semibold">{t("noQuestionSets")}</h3>
+          <p className="mt-2 text-sm text-muted">{t("importToBegin")}</p>
         </div>
       ) : null}
 
       {questionSets.length > 0 ? (
         <div className="question-sets-table text-left text-sm">
           <div className="question-sets-grid bg-slate-50 px-6 py-3 text-xs font-semibold uppercase text-slate-500">
-            <div>Name</div>
-            <div>Imported</div>
-            <div>Type</div>
-            <div>Questions</div>
-            <div>Status</div>
+            <div>{t("name")}</div>
+            <div>{t("imported")}</div>
+            <div>{t("type")}</div>
+            <div>{t("questions")}</div>
+            <div>{t("status")}</div>
             <div aria-hidden="true" />
           </div>
           <div className="divide-y divide-line">
@@ -178,7 +180,7 @@ export function QuestionSetsScreen() {
                   <div className="flex min-w-0 items-baseline gap-2">
                     <div className="csv-name-wrap font-semibold text-ink">{set.name}</div>
                     {set.hasAttempts ? (
-                      <span className="shrink-0 text-xs font-semibold text-blue-700">Done</span>
+                      <span className="shrink-0 text-xs font-semibold text-blue-700">{t("done")}</span>
                     ) : null}
                   </div>
                   <div className="mt-1 text-xs text-muted">{set.description || "No description"}</div>

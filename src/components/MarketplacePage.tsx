@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { canSaveValidationSummary, parseCsvText } from "../lib/csvValidation";
 import { listQuestionSets, saveQuestionSet } from "../lib/database";
 import { useAppStore } from "../store/appStore";
+import { useSystemLanguage } from "../i18n";
 
 type MarketplaceItem = {
   id: string;
@@ -32,6 +33,7 @@ const MARKETPLACE_REMOTE_MANIFEST_URL = `${MARKETPLACE_REMOTE_ROOT}/public/marke
 const MARKETPLACE_LOCAL_MANIFEST_URL = "/marketplace/manifest.json";
 
 export function MarketplacePage() {
+  const { t } = useSystemLanguage();
   const { navigate, setDbError, setQuestionSets, tutorial, recordTutorialImport } = useAppStore();
   const [manifest, setManifest] = useState<MarketplaceManifest | null>(null);
   const [manifestSource, setManifestSource] = useState<"local" | "remote">("local");
@@ -180,10 +182,10 @@ export function MarketplacePage() {
             ⬇
           </div>
           <div>
-            <div className="text-xs font-black uppercase tracking-wide text-teal-700">Market place download from github</div>
-            <h2 className="mt-2 text-2xl font-semibold">SAT Question Set Marketplace</h2>
+            <div className="text-xs font-black uppercase tracking-wide text-teal-700">{t("marketDownloadGithub")}</div>
+            <h2 className="mt-2 text-2xl font-semibold">{t("marketTitle")}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              CSV bundles can be added directly to this app. Every bundle is listed at $0 and imports into local SQLite without saving to Downloads first.
+              {t("marketDescription")}
             </p>
           </div>
         </div>
@@ -193,7 +195,7 @@ export function MarketplacePage() {
         ) : null}
 
         {!loadError && items.length === 0 ? (
-          <div className="mt-6 text-sm text-muted">Loading marketplace bundles...</div>
+          <div className="mt-6 text-sm text-muted">{t("loadingMarketplace")}</div>
         ) : null}
 
         <div className="mt-6 space-y-6">
@@ -283,12 +285,12 @@ export function MarketplacePage() {
       </section>
 
       <aside className="rounded-md border border-line bg-white p-6 shadow-panel">
-        <h3 className="text-base font-semibold">Preview checkout</h3>
+        <h3 className="text-base font-semibold">{t("previewCheckout")}</h3>
         <p className="mt-4 text-sm leading-6 text-slate-600">
           No account, card, or payment provider is used. The selected CSV is fetched and inserted into local SQLite.
         </p>
         <div className="mt-6 rounded-md bg-slate-50 p-4 text-sm">
-          <div className="text-xs font-bold uppercase text-slate-500">Selected bundles</div>
+          <div className="text-xs font-bold uppercase text-slate-500">{t("selectedBundles")}</div>
           <div className="mt-2 text-2xl font-black">{selectedBundles.length}</div>
           {selectedBundles.length > 0 ? (
             <div className="mt-3 max-h-48 space-y-2 overflow-auto pr-1">
@@ -300,11 +302,11 @@ export function MarketplacePage() {
               ))}
             </div>
           ) : (
-            <div className="mt-2 text-xs text-muted">Select any number of bundles from the marketplace.</div>
+            <div className="mt-2 text-xs text-muted">{t("selectBundles")}</div>
           )}
         </div>
         <div className="mt-4 rounded-md bg-slate-50 p-4 text-sm">
-          <div className="text-xs font-bold uppercase text-slate-500">Preview price</div>
+          <div className="text-xs font-bold uppercase text-slate-500">{t("previewPrice")}</div>
           <div className="mt-2 text-3xl font-black">$0</div>
         </div>
         {selectedItem ? (

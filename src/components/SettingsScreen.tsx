@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "../services/settingsService";
 import type { AppSettings } from "../types";
 import { DropdownSelect, type DropdownOption } from "./ui/DropdownSelect";
+import { SYSTEM_LANGUAGE_OPTIONS, useSystemLanguage } from "../i18n";
 
 export function SettingsScreen() {
+  const { setLanguage, t } = useSystemLanguage();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +27,7 @@ export function SettingsScreen() {
     setSaved(false);
     try {
       await saveSettings(settings);
+      setLanguage(settings.language);
       setSaved(true);
     } catch (saveError: unknown) {
       setError(formatError(saveError, "Could not save settings."));
@@ -37,32 +40,33 @@ export function SettingsScreen() {
 
   return (
     <section className="max-w-3xl rounded-md border border-line bg-white p-6 shadow-panel">
-      <h2 className="text-lg font-semibold">Settings</h2>
+      <h2 className="text-lg font-semibold">{t("settings")}</h2>
       <div className="mt-6 grid grid-cols-2 gap-4">
-        <DropdownSelect label="Timer" value={settings.timerDefaultVisible ? "show" : "hide"} onChange={(value) => setSettings({ ...settings, timerDefaultVisible: value === "show" })} options={SHOW_HIDE_OPTIONS} />
-        <DropdownSelect label="Default Practice Length" value={settings.defaultPracticeLength.toString()} onChange={(value) => setSettings({ ...settings, defaultPracticeLength: Number(value) })} options={PRACTICE_LENGTH_OPTIONS} />
-        <DropdownSelect label="Audio" value={settings.audioEnabled ? "on" : "off"} onChange={(value) => setSettings({ ...settings, audioEnabled: value === "on" })} options={AUDIO_OPTIONS} />
+        <DropdownSelect label={t("systemLanguage")} value={settings.language} onChange={(value) => setSettings({ ...settings, language: value as AppSettings["language"] })} options={SYSTEM_LANGUAGE_OPTIONS} />
+        <DropdownSelect label={t("timer")} value={settings.timerDefaultVisible ? "show" : "hide"} onChange={(value) => setSettings({ ...settings, timerDefaultVisible: value === "show" })} options={showHideOptions(t)} />
+        <DropdownSelect label={t("defaultPracticeLength")} value={settings.defaultPracticeLength.toString()} onChange={(value) => setSettings({ ...settings, defaultPracticeLength: Number(value) })} options={PRACTICE_LENGTH_OPTIONS} />
+        <DropdownSelect label={t("audio")} value={settings.audioEnabled ? "on" : "off"} onChange={(value) => setSettings({ ...settings, audioEnabled: value === "on" })} options={audioOptions(t)} />
         <label className="settings-name-field">
-          <span className="settings-name-field__label">Name That Appears On Score Cards</span>
+          <span className="settings-name-field__label">{t("nameOnScoreCards")}</span>
           <input
             className="settings-name-field__input"
             maxLength={20}
             onChange={(event) => handleScoreCardNameChange(event.target.value)}
-            placeholder="Name here"
+            placeholder={t("nameHere")}
             type="text"
             value={settings.scoreCardName}
           />
         </label>
       </div>
       <button className="mt-6 rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white" onClick={() => void handleSave()} type="button">
-        Save Settings
+        {t("saveSettings")}
       </button>
-      {saved ? <div className="mt-4 text-sm text-teal-700">Settings saved locally.</div> : null}
+      {saved ? <div className="mt-4 text-sm text-teal-700">{t("settingsSaved")}</div> : null}
       {error ? <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div> : null}
       <section className="mt-8 rounded-md border border-line bg-slate-50 p-4">
-        <h3 className="font-semibold">Keyboard Shortcuts</h3>
+        <h3 className="font-semibold">{t("keyboardShortcuts")}</h3>
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          {["Next: Right Arrow", "Back: Left Arrow", "Mark: M", "Question Menu: Q", "Pause: P", "Submit Module: Ctrl + Enter", "Toggle Timer: T"].map((item) => (
+          {[t("nextShortcut"), t("backShortcut"), t("markShortcut"), t("questionMenuShortcut"), t("pauseShortcut"), t("submitShortcut"), t("toggleTimerShortcut")].map((item) => (
             <div className="rounded-md border border-line bg-white p-2" key={item}>{item}</div>
           ))}
         </div>
@@ -77,15 +81,13 @@ function formatError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-const SHOW_HIDE_OPTIONS: DropdownOption[] = [
-  { value: "show", label: "Show" },
-  { value: "hide", label: "Hide" }
-];
+function showHideOptions(t: ReturnType<typeof useSystemLanguage>["t"]): DropdownOption[] {
+  return [{ value: "show", label: t("show") }, { value: "hide", label: t("hide") }];
+}
 
-const AUDIO_OPTIONS: DropdownOption[] = [
-  { value: "on", label: "On" },
-  { value: "off", label: "Off" }
-];
+function audioOptions(t: ReturnType<typeof useSystemLanguage>["t"]): DropdownOption[] {
+  return [{ value: "on", label: t("on") }, { value: "off", label: t("off") }];
+}
 
 const PRACTICE_LENGTH_OPTIONS: DropdownOption[] = [10, 20, 30, 50, 100].map((value) => ({
   value: value.toString(),

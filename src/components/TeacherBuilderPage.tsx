@@ -23,6 +23,7 @@ import {
 import { useAppStore, type TutorialStep } from "../store/appStore";
 import type { PackageType, Question, QuestionSet, QuestionType, Section, VisualType } from "../types";
 import { VisualRenderer } from "./visual/VisualRenderer";
+import { translate, tutorialFallback, useSystemLanguage } from "../i18n";
 
 type BuilderRow = Record<string, string>;
 
@@ -988,6 +989,7 @@ function EditQuestionSetLockDialog({
 }
 
 function TeacherTutorialBanner({ onExit, step }: { onExit: () => void; step: TutorialStep }) {
+  const { language, t } = useSystemLanguage();
   const stepOrder: TutorialStep[] = [
     "teacher_set_type",
     "teacher_test_id",
@@ -1005,35 +1007,35 @@ function TeacherTutorialBanner({ onExit, step }: { onExit: () => void; step: Tut
     <div className="tutorial-banner mx-0 mt-0 rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="font-semibold">Tutorial Mode · Step {stepIndex + 1}/{stepOrder.length}</div>
-          <div className="mt-1">{teacherTutorialInstruction(step)}</div>
+          <div className="font-semibold">{t("tutorialMode", { step: stepIndex + 1, total: stepOrder.length })}</div>
+          <div className="mt-1">{teacherTutorialInstruction(language, step)}</div>
         </div>
         <button
           className="rounded-md border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-100"
           onClick={onExit}
           type="button"
         >
-          Exit Tutorial
+          {t("exitTutorial")}
         </button>
       </div>
     </div>
   );
 }
 
-function teacherTutorialInstruction(step: TutorialStep): string {
-  const instructions: Partial<Record<TutorialStep, string>> = {
-    teacher_set_type: "Choose the question set type.",
-    teacher_test_id: "Enter a Test ID for this CSV.",
-    teacher_question: "Write the question prompt.",
-    teacher_choice_a: "Write choice A.",
-    teacher_choice_b: "Write choice B.",
-    teacher_correct_answer: "Choose the correct answer.",
-    teacher_explanation: "Write the explanation.",
-    teacher_content_domain: "Choose the content domain.",
-    teacher_download: "Download the CSV.",
-    teacher_done: "Question maker tutorial complete."
+function teacherTutorialInstruction(language: Parameters<typeof translate>[0], step: TutorialStep): string {
+  const keys: Partial<Record<TutorialStep, Parameters<typeof translate>[1]>> = {
+    teacher_set_type: "tutorialTeacherSetType",
+    teacher_test_id: "tutorialTeacherTestId",
+    teacher_question: "tutorialTeacherQuestion",
+    teacher_choice_a: "tutorialTeacherChoiceA",
+    teacher_choice_b: "tutorialTeacherChoiceB",
+    teacher_correct_answer: "tutorialTeacherCorrect",
+    teacher_explanation: "tutorialTeacherExplanation",
+    teacher_content_domain: "tutorialTeacherDomain",
+    teacher_download: "tutorialTeacherDownload",
+    teacher_done: "tutorialTeacherDone"
   };
-  return instructions[step] ?? "Follow the highlighted control.";
+  return language === "en" ? translate(language, keys[step] ?? "tutorialDone") : tutorialFallback(language);
 }
 
 function isTeacherStep(currentStep: TutorialStep, expectedStep: TutorialStep): boolean {

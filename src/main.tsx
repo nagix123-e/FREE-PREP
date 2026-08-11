@@ -5,11 +5,14 @@ import "katex/dist/katex.min.css";
 import "./styles.css";
 import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import { SystemLanguageProvider } from "./i18n";
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
     <AppErrorBoundary>
-      <App />
+      <SystemLanguageProvider>
+        <App />
+      </SystemLanguageProvider>
     </AppErrorBoundary>
   </StrictMode>
 );

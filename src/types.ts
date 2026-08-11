@@ -200,7 +200,7 @@ export interface ReviewListItem {
 }
 
 export interface AppSettings {
-  language: "en" | "ja";
+  language: SystemLanguage;
   theme: "light" | "dark" | "system";
   timerDefaultVisible: boolean;
   defaultPracticeLength: number;
@@ -208,6 +208,8 @@ export interface AppSettings {
   audioEnabled: boolean;
   scoreCardName: string;
 }
+
+export type SystemLanguage = "en" | "ja" | "zh-CN" | "zh-TW" | "es" | "hi";
 
 export interface HighlightRecord {
   id?: number;

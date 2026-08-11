@@ -1,5 +1,6 @@
 import { listAttemptHistory } from "./attemptService";
 import { getScoreResult } from "./scoringService";
+import type { SystemLanguage } from "../types";
 
 export type TrendFilter = "last5" | "last10" | "last30days" | "all";
 export type ScoreTrendMode = "total" | "rw" | "math" | "all";
@@ -25,12 +26,12 @@ export interface WeaknessTrend {
   mostMissedTopics: string[];
 }
 
-export async function getScoreTrend(filter: TrendFilter): Promise<ScoreTrendPoint[]> {
+export async function getScoreTrend(filter: TrendFilter, language: SystemLanguage = "en"): Promise<ScoreTrendPoint[]> {
   const attempts = filterAttempts(await listAttemptHistory(), filter)
     .filter((attempt) => attempt.status === "completed")
     .reverse();
   return attempts.map((attempt) => ({
-    label: formatDate(attempt.completedAt ?? attempt.startedAt),
+    label: formatDate(attempt.completedAt ?? attempt.startedAt, language),
     total: attempt.practiceScore,
     rw: attempt.rwScore,
     math: attempt.mathScore
@@ -39,7 +40,8 @@ export async function getScoreTrend(filter: TrendFilter): Promise<ScoreTrendPoin
 
 export async function getCategoryTrend(
   type: "domain" | "skill",
-  filter: TrendFilter
+  filter: TrendFilter,
+  language: SystemLanguage = "en"
 ): Promise<CategoryTrendPoint[]> {
   const attempts = filterAttempts(await listAttemptHistory(), filter)
     .filter((attempt) => attempt.status === "completed")
@@ -52,7 +54,7 @@ export async function getCategoryTrend(
       .map((row) => {
         const attempt = attempts[index];
         return {
-          label: attempt?.completedAt ? formatDate(attempt.completedAt) : `Attempt ${index + 1}`,
+          label: attempt?.completedAt ? formatDate(attempt.completedAt, language) : formatAttemptLabel(index + 1, language),
           category: row.label,
           score: row.genreScore,
           total: row.total
@@ -99,6 +101,30 @@ function filterAttempts<T extends { startedAt: string }>(attempts: T[], filter: 
   return attempts;
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(value));
+function formatDate(value: string, language: SystemLanguage): string {
+  return new Intl.DateTimeFormat(localeFor(language), { month: "short", day: "numeric" }).format(new Date(value));
+}
+
+function formatAttemptLabel(index: number, language: SystemLanguage): string {
+  const labels: Record<SystemLanguage, string> = {
+    en: `Attempt ${index}`,
+    ja: `${index}回目`,
+    "zh-CN": `第 ${index} 次`,
+    "zh-TW": `第 ${index} 次`,
+    es: `Intento ${index}`,
+    hi: `प्रयास ${index}`
+  };
+  return labels[language];
+}
+
+function localeFor(language: SystemLanguage): string {
+  const locales: Record<SystemLanguage, string> = {
+    en: "en-US",
+    ja: "ja-JP",
+    "zh-CN": "zh-CN",
+    "zh-TW": "zh-TW",
+    es: "es-ES",
+    hi: "hi-IN"
+  };
+  return locales[language];
 }

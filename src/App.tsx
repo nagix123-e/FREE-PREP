@@ -28,26 +28,29 @@ import { TestOverviewPage } from "./components/testStart/TestOverviewPage";
 import { listQuestionSets } from "./lib/database";
 import { useAppStore } from "./store/appStore";
 import type { RouteKey } from "./types";
+import { SystemUiLocalizer, translate, tutorialFallback, useSystemLanguage } from "./i18n";
+import type { SystemLanguage } from "./types";
 
-const NAV_ITEMS: Array<{ route: RouteKey; label: string }> = [
-  { route: "home", label: "Home" },
-  { route: "dashboard", label: "Dashboard" },
-  { route: "marketplace", label: "Marketplace" },
-  { route: "import", label: "Import CSV" },
-  { route: "sets", label: "Question Sets" },
-  { route: "history", label: "Score History" },
-  { route: "achievements", label: "Achievements" },
-  { route: "spacedReview", label: "Spaced Review" },
-  { route: "mistakePractice", label: "Mistake Practice" },
-  { route: "domainPractice", label: "Domain Practice" },
-  { route: "reviewList", label: "Review List" },
-  { route: "statistics", label: "Statistics" },
-  { route: "settings", label: "Settings" }
+const NAV_ITEMS: Array<{ route: RouteKey; labelKey: Parameters<typeof translate>[1] }> = [
+  { route: "home", labelKey: "home" },
+  { route: "dashboard", labelKey: "dashboard" },
+  { route: "marketplace", labelKey: "marketplace" },
+  { route: "import", labelKey: "importCsv" },
+  { route: "sets", labelKey: "questionSets" },
+  { route: "history", labelKey: "scoreHistory" },
+  { route: "achievements", labelKey: "achievements" },
+  { route: "spacedReview", labelKey: "spacedReview" },
+  { route: "mistakePractice", labelKey: "mistakePractice" },
+  { route: "domainPractice", labelKey: "domainPractice" },
+  { route: "reviewList", labelKey: "reviewList" },
+  { route: "statistics", labelKey: "statistics" },
+  { route: "settings", labelKey: "settings" }
 ];
 
 const MIN_LOADING_MS = 1200;
 
 export default function App() {
+  const { language, t } = useSystemLanguage();
   const {
     route,
     navigate,
@@ -95,7 +98,7 @@ export default function App() {
         {tutorial.active ? (
           <>
             <div className="tutorial-block-layer" aria-hidden="true" />
-            <TutorialBanner onExit={exitTutorial} />
+            <TutorialBanner language="en" onExit={exitTutorial} />
           </>
         ) : null}
         <TestRunnerPage />
@@ -106,11 +109,12 @@ export default function App() {
     return <PracticeRunnerPage />;
   }
   if (route === "teacherBuilder") {
-    return <TeacherBuilderPage />;
+    return <SystemUiLocalizer><TeacherBuilderPage /></SystemUiLocalizer>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-ink">
+    <SystemUiLocalizer>
+      <div className="min-h-screen bg-slate-50 text-ink">
       <div className="app-shell-grid grid min-h-screen">
         <aside className="border-r border-line bg-white px-4 py-5">
           <button
@@ -144,7 +148,7 @@ export default function App() {
               />
             </div>
             <div className="brand-subtitle">
-              Free Practice Simulator for the SAT® Exam
+              {language === "en" ? "Free Practice Simulator for the SAT® Exam" : "FREE PREP"}
             </div>
             <div className="brand-disclaimer">
               Not affiliated with or endorsed by College Board.
@@ -163,15 +167,15 @@ export default function App() {
                 onClick={() => navigate(item.route)}
                 type="button"
               >
-                {item.label}
+                {t(item.labelKey)}
               </button>
             ))}
           </nav>
 
           <div className="mt-8 rounded-md border border-line bg-slate-50 p-3">
-            <div className="text-xs font-semibold uppercase text-slate-500">Saved Sets</div>
+            <div className="text-xs font-semibold uppercase text-slate-500">{t("savedSets")}</div>
             <div className="mt-2 text-2xl font-semibold">{questionSets.length}</div>
-            <div className="mt-1 text-xs text-muted">Stored in local SQLite</div>
+            <div className="mt-1 text-xs text-muted">{t("storedInLocalSqlite")}</div>
           </div>
         </aside>
 
@@ -179,8 +183,8 @@ export default function App() {
           <header className="border-b border-line bg-white px-8 py-5">
             <div className="app-content-shell flex items-center justify-between gap-6">
               <div>
-                <h1 className="text-xl font-semibold">{titleForRoute(route)}</h1>
-                <p className="mt-1 text-sm text-muted">Practice Score and Estimated Score only.</p>
+                <h1 className="text-xl font-semibold">{titleForRoute(route, language)}</h1>
+                <p className="mt-1 text-sm text-muted">{t("scoreDisclaimer")}</p>
               </div>
               {route === "home" ? (
                 <div className="flex items-center gap-3">
@@ -189,14 +193,14 @@ export default function App() {
                     onClick={startTutorial}
                     type="button"
                   >
-                    Tutorial
+                    {t("tutorial")}
                   </button>
                   <button
                     className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     onClick={() => navigate("teacherBuilder")}
                     type="button"
                   >
-                    Question Maker Console
+                    {t("questionMakerConsole")}
                   </button>
                 </div>
               ) : null}
@@ -206,7 +210,7 @@ export default function App() {
           {tutorial.active ? (
             <>
               <div className="tutorial-block-layer" aria-hidden="true" />
-              <TutorialBanner onExit={exitTutorial} />
+              <TutorialBanner language={language} onExit={exitTutorial} />
             </>
           ) : null}
 
@@ -243,11 +247,12 @@ export default function App() {
           </div>
         </main>
       </div>
-    </div>
+      </div>
+    </SystemUiLocalizer>
   );
 }
 
-function TutorialBanner({ onExit }: { onExit: () => void }) {
+function TutorialBanner({ language, onExit }: { language: SystemLanguage; onExit: () => void }) {
   const tutorial = useAppStore((state) => state.tutorial);
   const stepOrder: Array<typeof tutorial.step> = [
     "home",
@@ -284,53 +289,26 @@ function TutorialBanner({ onExit }: { onExit: () => void }) {
     <div className="tutorial-banner mx-8 mt-6 rounded-md border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="font-semibold">Tutorial Mode · Step {stepIndex + 1}/{stepOrder.length}</div>
-          <div className="mt-1">{tutorialInstruction(tutorial.step)}</div>
+          <div className="font-semibold">{translate(language, "tutorialMode", { step: stepIndex + 1, total: stepOrder.length })}</div>
+          <div className="mt-1">{tutorialInstruction(language, tutorial.step)}</div>
         </div>
         <button
           className="rounded-md border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-100"
           onClick={onExit}
           type="button"
         >
-          Exit Tutorial
+          {translate(language, "exitTutorial")}
         </button>
       </div>
     </div>
   );
 }
 
-function tutorialInstruction(step: ReturnType<typeof useAppStore.getState>["tutorial"]["step"]): string {
-  const text = {
-    home: "This is Home. Click Dashboard to see your practice overview.",
-    dashboard: "This is Dashboard. Next, go to Import CSV.",
-    import_csv: "This is Import CSV. Next, open Marketplace.",
-    marketplace_add: "Add the first marketplace question set directly to your local library.",
-    question_sets: "Find the set you imported and start RW practice.",
-    test_overview_continue: "Press Continue to move through the test overview.",
-    rules_continue: "Press Continue after reviewing the rules and tools.",
-    device_check_confirm: "Confirm the local device check.",
-    device_check_start: "Press Start Module.",
-    setup_start: "Start RW practice.",
-    highlight: "Press Highlight.",
-    answer_one_rw: "Answer one RW question.",
-    mark_review: "Press Mark for Review.",
-    notes: "Open Notes.",
-    shortcuts: "Open Shortcuts to see keyboard controls.",
-    pause_exit: "Open Pause, then click Exit to Home.",
-    score_history_delete: "Go to Score History and delete the tutorial practice history.",
-    teacher_set_type: "Choose the question set type.",
-    teacher_test_id: "Enter a Test ID.",
-    teacher_question: "Write the question prompt.",
-    teacher_choice_a: "Write choice A.",
-    teacher_choice_b: "Write choice B.",
-    teacher_correct_answer: "Choose the correct answer.",
-    teacher_explanation: "Write the explanation.",
-    teacher_content_domain: "Choose the content domain.",
-    teacher_download: "Download the CSV.",
-    teacher_done: "Question maker tutorial complete.",
-    done: "Tutorial complete."
-  };
-  return text[step];
+function tutorialInstruction(language: SystemLanguage, step: ReturnType<typeof useAppStore.getState>["tutorial"]["step"]): string {
+  const keys = {
+    home: "tutorialHome", dashboard: "tutorialDashboard", import_csv: "tutorialImport", marketplace_add: "tutorialMarketplace", question_sets: "tutorialQuestionSets", test_overview_continue: "tutorialOverview", rules_continue: "tutorialRules", device_check_confirm: "tutorialDeviceCheck", device_check_start: "tutorialStartModule", setup_start: "tutorialSetup", highlight: "tutorialHighlight", answer_one_rw: "tutorialAnswer", mark_review: "tutorialMark", notes: "tutorialNotes", shortcuts: "tutorialShortcuts", pause_exit: "tutorialPause", score_history_delete: "tutorialHistory", teacher_set_type: "tutorialTeacherSetType", teacher_test_id: "tutorialTeacherTestId", teacher_question: "tutorialTeacherQuestion", teacher_choice_a: "tutorialTeacherChoiceA", teacher_choice_b: "tutorialTeacherChoiceB", teacher_correct_answer: "tutorialTeacherCorrect", teacher_explanation: "tutorialTeacherExplanation", teacher_content_domain: "tutorialTeacherDomain", teacher_download: "tutorialTeacherDownload", teacher_done: "tutorialTeacherDone", done: "tutorialDone"
+  } as const;
+  return language === "en" ? translate(language, keys[step]) : tutorialFallback(language);
 }
 
 function tutorialNavTargetClass(
@@ -346,36 +324,36 @@ function tutorialNavTargetClass(
   return "";
 }
 
-function titleForRoute(route: RouteKey): string {
-  const titles: Record<RouteKey, string> = {
-    home: "Home",
-    teacherBuilder: "Question Maker Console",
-    marketplace: "Marketplace",
-    dashboard: "Dashboard",
-    import: "Import CSV",
-    sets: "Question Sets",
-    preview: "Question Set Preview",
-    testOverview: "Test Overview",
-    rulesAndTools: "Rules and Tools",
-    deviceCheck: "Device Check",
-    setup: "Test Setup",
-    test: "Practice Test",
-    moduleReview: "Module Review",
-    sectionBreak: "Section Break",
-    result: "Result",
-    reviewAnswers: "Review Answers",
-    history: "Score History",
-    achievements: "Achievements",
-    spacedReview: "Spaced Review",
-    mistakePractice: "Mistake Practice",
-    domainPractice: "Domain Practice",
-    reviewList: "Review List",
-    reviewListPractice: "Review List Practice",
-    statistics: "Statistics",
-    practiceRunner: "Focused Practice",
-    settings: "Settings"
+function titleForRoute(route: RouteKey, language: SystemLanguage): string {
+  const titles: Record<RouteKey, Parameters<typeof translate>[1]> = {
+    home: "home",
+    teacherBuilder: "questionMakerConsole",
+    marketplace: "marketplace",
+    dashboard: "dashboard",
+    import: "importCsv",
+    sets: "questionSets",
+    preview: "questionSetPreview",
+    testOverview: "testOverview",
+    rulesAndTools: "rulesAndTools",
+    deviceCheck: "deviceCheck",
+    setup: "testSetup",
+    test: "practiceTest",
+    moduleReview: "moduleReview",
+    sectionBreak: "sectionBreak",
+    result: "result",
+    reviewAnswers: "reviewAnswers",
+    history: "scoreHistory",
+    achievements: "achievements",
+    spacedReview: "spacedReview",
+    mistakePractice: "mistakePractice",
+    domainPractice: "domainPractice",
+    reviewList: "reviewList",
+    reviewListPractice: "reviewListPractice",
+    statistics: "statistics",
+    practiceRunner: "focusedPractice",
+    settings: "settings"
   };
-  return titles[route];
+  return translate(language, titles[route]);
 }
 
 function formatError(error: unknown): string {

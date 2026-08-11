@@ -18,12 +18,14 @@ import {
 import type { DashboardSummary } from "../types";
 import { BreakdownTable } from "./result/BreakdownTable";
 import { DropdownSelect } from "./ui/DropdownSelect";
+import { useSystemLanguage } from "../i18n";
 
 const DASHBOARD_EXPORT_WIDTH = 1280;
 const DASHBOARD_EXPORT_MAX_DIMENSION = 8000;
 const DASHBOARD_EXPORT_MAX_PIXELS = 14_000_000;
 
 export function DashboardPage() {
+  const { language, t } = useSystemLanguage();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [scoreTrend, setScoreTrend] = useState<ScoreTrendPoint[]>([]);
   const [domainTrend, setDomainTrend] = useState<CategoryTrendPoint[]>([]);
@@ -40,9 +42,9 @@ export function DashboardPage() {
 
   useEffect(() => {
     void Promise.all([
-      getScoreTrend(trendFilter),
-      getCategoryTrend("domain", trendFilter),
-      getCategoryTrend("skill", trendFilter),
+      getScoreTrend(trendFilter, language),
+      getCategoryTrend("domain", trendFilter, language),
+      getCategoryTrend("skill", trendFilter, language),
       getWeaknessTrend()
     ]).then(([scores, domains, skills, weakness]) => {
       setScoreTrend(scores);
@@ -50,10 +52,10 @@ export function DashboardPage() {
       setSkillTrend(skills);
       setWeaknessTrend(weakness);
     });
-  }, [trendFilter]);
+  }, [language, trendFilter]);
 
   if (!summary) {
-    return <div className="text-sm text-muted">Loading dashboard...</div>;
+    return <div className="text-sm text-muted">{t("dashboardLoading")}</div>;
   }
 
   async function downloadDashboardData() {
@@ -104,7 +106,7 @@ export function DashboardPage() {
         <div className="download-confirmation-toast" role="status">
           <span className="download-confirmation-toast__check">✓</span>
           <span>
-            Dashboard downloaded
+            {t("dashboard")} downloaded
             <span className="download-confirmation-toast__file">free-prep-dashboard.png</span>
           </span>
         </div>
@@ -116,13 +118,13 @@ export function DashboardPage() {
           onClick={downloadDashboardData}
           type="button"
         >
-          {downloadState === "done" ? "Downloaded" : downloadState === "saving" ? "Preparing..." : "Download dashboard data"}
+          {downloadState === "done" ? t("done") : downloadState === "saving" ? t("loading") : t("downloadDashboardData")}
         </button>
       </div>
       <div className="space-y-7 bg-slate-50 p-1" ref={dashboardRef}>
         <div className="hidden rounded-md border border-line bg-white px-8 py-7" data-dashboard-export-header>
-          <h2 className="text-2xl font-semibold">Dashboard</h2>
-          <p className="mt-2 text-sm text-muted">Practice Score and Estimated Score only.</p>
+          <h2 className="text-2xl font-semibold">{t("dashboard")}</h2>
+          <p className="mt-2 text-sm text-muted">{t("scoreDisclaimer")}</p>
         </div>
         <section className="grid grid-cols-4 gap-5">
           <Card label="Total Tests Taken" value={summary.totalTestsTaken.toString()} />
@@ -132,14 +134,14 @@ export function DashboardPage() {
           <Card label="Average RW Score" value={summary.averageRwScore.toString()} />
           <Card label="Average Math Score" value={summary.averageMathScore.toString()} />
           <Card label="Total Questions Answered" value={summary.totalQuestionsAnswered.toString()} />
-          <Card label="Total Study Time" value={formatDuration(summary.totalStudyTimeSec)} />
+          <Card label="Total Study Time" value={formatDuration(summary.totalStudyTimeSec, language)} />
         </section>
 
         <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-semibold">Score Trend Chart</h3>
-              <p className="mt-1 text-xs text-muted">Scores are estimates for practice only.</p>
+              <h3 className="font-semibold">{t("scoreTrendChart")}</h3>
+              <p className="mt-1 text-xs text-muted">{t("scoresEstimateOnly")}</p>
             </div>
             <div className="grid min-w-[360px] grid-cols-2 gap-3">
               <DropdownSelect
@@ -168,7 +170,7 @@ export function DashboardPage() {
           </div>
           <div className="mt-5">
             {scoreTrend.length === 0 ? (
-              <p className="text-sm text-muted">No graph data yet. Complete a practice test to see score trends.</p>
+              <p className="text-sm text-muted">{t("noGraphData")}</p>
             ) : (
               <SimpleLineChart
                 max={scoreMode === "total" ? 1600 : scoreMode === "all" ? 1600 : 800}
@@ -188,7 +190,7 @@ export function DashboardPage() {
         <section className="grid grid-cols-2 gap-5">
           <WeaknessTrendPanel trend={weaknessTrend} />
           <section className="safe-card-padding rounded-md border border-line bg-white p-6 shadow-panel">
-            <h3 className="font-semibold">Recommended Practice</h3>
+            <h3 className="font-semibold">{t("recommendedPractice")}</h3>
             <div className="mt-5 space-y-3">
               {buildRecommendedPractice(summary.weakAreas).map((item) => (
                 <div className="rounded-md border border-line bg-slate-50 p-4 text-sm" key={item}>{item}</div>
@@ -359,15 +361,23 @@ function TrendPanel({ title, values }: { title: string; values: number[] }) {
   );
 }
 
-function formatDuration(seconds: number): string {
+function formatDuration(seconds: number, language: ReturnType<typeof useSystemLanguage>["language"]): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainder = seconds % 60;
+  const units = {
+    en: { hour: "h", minute: "m", second: "s" },
+    ja: { hour: "時間", minute: "分", second: "秒" },
+    "zh-CN": { hour: "小时", minute: "分", second: "秒" },
+    "zh-TW": { hour: "小時", minute: "分", second: "秒" },
+    es: { hour: " h", minute: " min", second: " s" },
+    hi: { hour: " घं", minute: " मि", second: " से" }
+  }[language];
   if (hours > 0) {
-    return `${hours}h ${minutes}m`;
+    return `${hours}${units.hour} ${minutes}${units.minute}`;
   }
   if (minutes > 0) {
-    return `${minutes}m ${remainder}s`;
+    return `${minutes}${units.minute} ${remainder}${units.second}`;
   }
-  return `${remainder}s`;
+  return `${remainder}${units.second}`;
 }
