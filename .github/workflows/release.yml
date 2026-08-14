@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and release ${{ matrix.label }}
+  build:
+    name: Build ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -19,15 +19,12 @@ jobs:
           - label: Windows
             os: windows-latest
             bundles: nsis
-            suffix: windows
           - label: Linux
             os: ubuntu-latest
             bundles: appimage
-            suffix: linux
           - label: macOS
             os: macos-latest
             bundles: dmg
-            suffix: macos
 
     steps:
       - name: Checkout
@@ -115,17 +112,47 @@ jobs:
           dmg=$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)
           cp "$dmg" "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_macos.dmg"
 
-      - name: Create OS release
+      - name: Upload OS release asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}-release-asset
+          path: ${{ runner.temp }}/release-assets/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish combined release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows asset
+        uses: actions/download-artifact@v4
+        with:
+          name: Windows-release-asset
+          path: release-assets
+
+      - name: Download Linux asset
+        uses: actions/download-artifact@v4
+        with:
+          name: Linux-release-asset
+          path: release-assets
+
+      - name: Download macOS asset
+        uses: actions/download-artifact@v4
+        with:
+          name: macOS-release-asset
+          path: release-assets
+
+      - name: Create combined release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}-${{ matrix.suffix }}
+          tag_name: ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
-          name: FREE PREP ${{ github.ref_name }} - ${{ matrix.label }}
+          name: FREE PREP ${{ github.ref_name }}
           body: |
-            FREE PREP for ${{ matrix.label }}.
+            FREE PREP desktop installers for Windows, Linux, and macOS.
 
-            Download the single installer for this operating system from this release.
+            Download the single installer for your operating system from this release.
 
             Not affiliated with or endorsed by College Board.
           prerelease: false
-          files: ${{ runner.temp }}/release-assets/*
+          files: release-assets/*
