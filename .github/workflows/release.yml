@@ -15,14 +15,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: Windows
-            os: windows-latest
-            bundles: "nsis,msi"
-            artifact: windows-bundles
           - label: Linux
             os: ubuntu-latest
             bundles: "appimage,deb"
             artifact: linux-bundles
+            release_suffix: linux
+          - label: macOS
+            os: macos-latest
+            bundles: "dmg,app"
+            artifact: macos-bundles
+            release_suffix: macos
+          - label: Windows
+            os: windows-latest
+            bundles: "nsis,msi"
+            artifact: windows-bundles
+            release_suffix: windows
 
     runs-on: ${{ matrix.os }}
 
@@ -74,6 +81,17 @@ jobs:
           cp "$appimage" "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_linux-x86_64.AppImage"
           cp "$deb" "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_linux-amd64.deb"
 
+      - name: Prepare macOS release assets
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          release_version="${GITHUB_REF_NAME#v}"
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          dmg=$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)
+          app=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type d -name '*.app' -print -quit)
+          cp "$dmg" "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_macos.dmg"
+          tar -C "$(dirname "$app")" -czf "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_macos.app.tar.gz" "$(basename "$app")"
+
       - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
@@ -82,24 +100,38 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Publish GitHub Release
+    name: Publish ${{ matrix.label }} Release
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows
+            artifact: windows-bundles
+            release_suffix: windows
+          - label: Linux
+            artifact: linux-bundles
+            release_suffix: linux
+          - label: macOS
+            artifact: macos-bundles
+            release_suffix: macos
 
     steps:
       - name: Download packaged assets
         uses: actions/download-artifact@v4
         with:
+          name: ${{ matrix.artifact }}
           path: release-assets
-          merge-multiple: true
 
-      - name: Create GitHub Release
+      - name: Create ${{ matrix.label }} Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: FREE PREP ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}-${{ matrix.release_suffix }}
+          target_commitish: ${{ github.sha }}
+          name: FREE PREP ${{ github.ref_name }} - ${{ matrix.label }}
           body: |
-            FREE PREP desktop installers for Windows and Linux.
+            FREE PREP desktop installer for ${{ matrix.label }}.
 
             Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
 
