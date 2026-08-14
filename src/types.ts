@@ -18,7 +18,7 @@ export type VisualType =
   | "box_plot"
   | "pie_chart";
 export type SetStatus = "valid" | "warning";
-export type PackageType = "full_test" | "rw_section" | "math_section";
+export type PackageType = "full_test" | "rw_section" | "math_section" | "rw_module_1" | "rw_module_2" | "math_module_1" | "math_module_2";
 export type AttemptStatus = "in_progress" | "module_review" | "section_break" | "completed" | "paused";
 export type AttemptMode =
   | "full_hard_practice"
@@ -315,7 +315,7 @@ export interface TestModuleSpec {
   questionCount: number;
 }
 
-export type PracticeTestCourse = "all" | "rw" | "math";
+export type PracticeTestCourse = "all" | "rw" | "math" | "rw_module_1" | "rw_module_2" | "math_module_1" | "math_module_2";
 
 export interface ValidationIssue {
   level: "error" | "warning";

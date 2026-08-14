@@ -838,13 +838,22 @@ const PACKAGE_EXPECTED_COUNTS: Record<PackageType, Record<string, number>> = {
   math_section: {
     "MATH-1-base": 22,
     "MATH-2-hard": 22
+  },
+  rw_module_1: { "RW-1-base": 27 },
+  rw_module_2: { "RW-2-hard": 27 },
+  math_module_1: { "MATH-1-base": 22 },
+  math_module_2: { "MATH-2-hard": 22
   }
 };
 
 const PACKAGE_EXPECTED_TOTALS: Record<PackageType, number> = {
   full_test: 98,
   rw_section: 54,
-  math_section: 44
+  math_section: 44,
+  rw_module_1: 27,
+  rw_module_2: 27,
+  math_module_1: 22,
+  math_module_2: 22
 };
 
 function countSections(questions: Question[]): Record<Section, number> {
@@ -862,6 +871,11 @@ function inferPackageType(
   rowCount: number,
   sectionCounts: Record<Section, number>
 ): PackageType {
+  const keys = new Set(questions.map((question) => `${question.section}-${question.module}-${question.route}`));
+  if (keys.size === 1 && keys.has("RW-1-base")) return "rw_module_1";
+  if (keys.size === 1 && keys.has("RW-2-hard")) return "rw_module_2";
+  if (keys.size === 1 && keys.has("MATH-1-base")) return "math_module_1";
+  if (keys.size === 1 && keys.has("MATH-2-hard")) return "math_module_2";
   const hasRw = sectionCounts.RW > 0;
   const hasMath = sectionCounts.MATH > 0;
   if (hasRw && hasMath) return "full_test";
@@ -876,6 +890,8 @@ function inferPackageTypeFromMetadata(
   totalQuestions: number,
   sectionCounts: Record<Section, number>
 ): PackageType {
+  if (totalQuestions === 27 && sectionCounts.RW === 27) return "rw_module_1";
+  if (totalQuestions === 22 && sectionCounts.MATH === 22) return "math_module_1";
   const hasRw = sectionCounts.RW > 0;
   const hasMath = sectionCounts.MATH > 0;
   if (hasRw && !hasMath) return "rw_section";
@@ -886,7 +902,7 @@ function inferPackageTypeFromMetadata(
 }
 
 function isPackageType(value: unknown): value is PackageType {
-  return value === "full_test" || value === "rw_section" || value === "math_section";
+  return ["full_test", "rw_section", "math_section", "rw_module_1", "rw_module_2", "math_module_1", "math_module_2"].includes(value as string);
 }
 
 function parseSectionCounts(value: string | null): Record<Section, number> {
@@ -946,6 +962,10 @@ function findDuplicateQuestionIds(questions: Question[]): string[] {
 function formatPackageType(packageType: PackageType): string {
   if (packageType === "rw_section") return "RW section package";
   if (packageType === "math_section") return "Math section package";
+  if (packageType === "rw_module_1") return "RW Module 1 package";
+  if (packageType === "rw_module_2") return "RW Module 2 package";
+  if (packageType === "math_module_1") return "Math Module 1 package";
+  if (packageType === "math_module_2") return "Math Module 2 package";
   return "Full test package";
 }
 

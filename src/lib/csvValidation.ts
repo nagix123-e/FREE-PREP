@@ -41,6 +41,11 @@ const PACKAGE_RULES: Record<
     keys: ["MATH-1-base", "MATH-2-hard"],
     label: "Math section",
     allowedSections: ["MATH"]
+  },
+  rw_module_1: { totalRows: 27, keys: ["RW-1-base"], label: "RW Module 1", allowedSections: ["RW"] },
+  rw_module_2: { totalRows: 27, keys: ["RW-2-hard"], label: "RW Module 2", allowedSections: ["RW"] },
+  math_module_1: { totalRows: 22, keys: ["MATH-1-base"], label: "Math Module 1", allowedSections: ["MATH"] },
+  math_module_2: { totalRows: 22, keys: ["MATH-2-hard"], label: "Math Module 2", allowedSections: ["MATH"]
   }
 };
 
@@ -251,10 +256,19 @@ export function canSaveValidationSummary(summary: ValidationSummary): boolean {
 export function getPackageTypeLabel(packageType: PackageType): string {
   if (packageType === "full_test") return "Full Test Package";
   if (packageType === "rw_section") return "RW Section Package";
+  if (packageType === "rw_module_1") return "RW Module 1 Package";
+  if (packageType === "rw_module_2") return "RW Module 2 Package";
+  if (packageType === "math_module_1") return "Math Module 1 Package";
+  if (packageType === "math_module_2") return "Math Module 2 Package";
   return "Math Section Package";
 }
 
 function detectPackageType(questions: Question[]): PackageType | null {
+  const keys = new Set(questions.map((question) => countKey(question.section, question.module, question.route)));
+  if (keys.size === 1 && keys.has("RW-1-base")) return "rw_module_1";
+  if (keys.size === 1 && keys.has("RW-2-hard")) return "rw_module_2";
+  if (keys.size === 1 && keys.has("MATH-1-base")) return "math_module_1";
+  if (keys.size === 1 && keys.has("MATH-2-hard")) return "math_module_2";
   const sections = new Set(questions.map((question) => question.section));
   if (sections.has("RW") && sections.has("MATH")) return "full_test";
   if (sections.size === 1 && sections.has("RW")) return "rw_section";

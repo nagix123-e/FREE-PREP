@@ -4,6 +4,7 @@ import { combineSectionQuestionSets, deleteQuestionSet, listQuestionSets } from 
 import { useAppStore } from "../store/appStore";
 import { useSystemLanguage } from "../i18n";
 import { DropdownSelect, type DropdownOption } from "./ui/DropdownSelect";
+import type { QuestionSet } from "../types";
 
 export function QuestionSetsScreen() {
   const { t } = useSystemLanguage();
@@ -243,9 +244,11 @@ export function QuestionSetsScreen() {
   );
 }
 
-function getStartButtonLabel(packageType: "full_test" | "rw_section" | "math_section"): string {
+function getStartButtonLabel(packageType: QuestionSet["packageType"]): string {
   if (packageType === "rw_section") return "Start RW";
   if (packageType === "math_section") return "Start Math";
+  if (packageType.startsWith("rw_module")) return "Start RW Module";
+  if (packageType.startsWith("math_module")) return "Start Math Module";
   return "Start Test";
 }
 

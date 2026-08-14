@@ -136,7 +136,11 @@ const BLUEPRINTS: Record<
   math_section: [
     { section: "MATH", module: "1", route: "base", count: 22 },
     { section: "MATH", module: "2", route: "hard", count: 22 }
-  ]
+  ],
+  rw_module_1: [{ section: "RW", module: "1", route: "base", count: 27 }],
+  rw_module_2: [{ section: "RW", module: "2", route: "hard", count: 27 }],
+  math_module_1: [{ section: "MATH", module: "1", route: "base", count: 22 }],
+  math_module_2: [{ section: "MATH", module: "2", route: "hard", count: 22 }]
 };
 
 export function TeacherBuilderPage() {

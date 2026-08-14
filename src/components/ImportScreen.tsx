@@ -691,9 +691,13 @@ function getExpectedCountRows(summary: ValidationSummary | null): Array<[string,
   ];
 
   return allRows
-    .filter(([, , , section]) => {
+    .filter(([label, , , section]) => {
       if (packageType === "rw_section") return section === "RW";
       if (packageType === "math_section") return section === "MATH";
+      if (packageType === "rw_module_1") return section === "RW" && label === "RW Module 1 base";
+      if (packageType === "rw_module_2") return section === "RW" && label === "RW Module 2 hard";
+      if (packageType === "math_module_1") return section === "MATH" && label === "Math Module 1 base";
+      if (packageType === "math_module_2") return section === "MATH" && label === "Math Module 2 hard";
       return true;
     })
     .map(([label, actual, expected]): [string, number, number] => [label, actual, expected]);
@@ -703,6 +707,8 @@ function getExpectedRowCount(summary: ValidationSummary | null): number {
   if (summary?.packageType === "rw_section") return 54;
   if (summary?.packageType === "math_section") return 44;
   if (summary?.packageType === "full_test") return 98;
+  if (summary?.packageType === "rw_module_1" || summary?.packageType === "rw_module_2") return 27;
+  if (summary?.packageType === "math_module_1" || summary?.packageType === "math_module_2") return 22;
   return 0;
 }
 

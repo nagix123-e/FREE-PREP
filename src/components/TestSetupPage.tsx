@@ -30,6 +30,8 @@ export function TestSetupPage() {
       setDbError("Combine this section package with a matching section before starting a full test.");
       return;
     }
+    const moduleCourse = getModuleCourse(set);
+    const selectedCourse = moduleCourse ?? course;
     if (set?.packageType === "rw_section" && course === "math") {
       setDbError("This package only contains RW questions.");
       return;
@@ -39,11 +41,11 @@ export function TestSetupPage() {
       return;
     }
     try {
-      const attempt = await startAttempt(selectedSetId, course);
+      const attempt = await startAttempt(selectedSetId, selectedCourse);
       if (
         tutorial.active &&
         tutorial.importedSetId === selectedSetId &&
-        course === "rw"
+        selectedCourse === "rw"
       ) {
         recordTutorialPractice(attempt.id);
       }
@@ -100,7 +102,7 @@ export function TestSetupPage() {
               onClick={() => void handleStart("all")}
             />
           ) : null}
-          {set?.packageType !== "math_section" ? (
+          {set?.packageType !== "math_section" && !isMathModulePackage(set?.packageType) ? (
             <PracticeStartButton
               className={
                 tutorial.active &&
@@ -114,7 +116,7 @@ export function TestSetupPage() {
               onClick={() => void handleStart("rw")}
             />
           ) : null}
-          {set?.packageType !== "rw_section" ? (
+          {set?.packageType !== "rw_section" && !isRwModulePackage(set?.packageType) ? (
             <PracticeStartButton
               disabled={loading}
               label="Start Math Only Full Hard Practice Test"
@@ -147,18 +149,24 @@ export function TestSetupPage() {
 }
 
 function getDisplayedModuleIndexes(set: QuestionSet | null): number[] {
+  const moduleCourse = getModuleCourse(set);
+  if (moduleCourse) return getModuleIndexesForCourse(moduleCourse);
   if (set?.packageType === "rw_section") return getModuleIndexesForCourse("rw");
   if (set?.packageType === "math_section") return getModuleIndexesForCourse("math");
   return getModuleIndexesForCourse("all");
 }
 
 function getSetupTitle(set: QuestionSet | null): string {
+  const moduleCourse = getModuleCourse(set);
+  if (moduleCourse) return `${moduleCourse.startsWith("rw") ? "RW" : "Math"} Module ${moduleCourse.endsWith("1") ? "1" : "2"} Practice Test`;
   if (set?.packageType === "rw_section") return "RW Only Practice Test";
   if (set?.packageType === "math_section") return "Math Only Practice Test";
   return "Full Hard Practice Test";
 }
 
 function getSetupDescription(set: QuestionSet | null): string {
+  const moduleCourse = getModuleCourse(set);
+  if (moduleCourse) return "This practice session uses the single module contained in this question set.";
   if (set?.packageType === "rw_section") {
     return "This practice session uses RW Module 1 base and RW Module 2 hard from this RW section package.";
   }
@@ -166,6 +174,23 @@ function getSetupDescription(set: QuestionSet | null): string {
     return "This practice session uses Math Module 1 base and Math Module 2 hard from this Math section package.";
   }
   return "This practice test uses the fixed sequence RW Module 1 base, RW Module 2 hard, Math Module 1 base, and Math Module 2 hard. It does not use adaptive branching.";
+}
+
+function getModuleCourse(set: QuestionSet | null): PracticeTestCourse | null {
+  const packageType = set?.packageType;
+  if (packageType === "rw_module_1") return "rw_module_1";
+  if (packageType === "rw_module_2") return "rw_module_2";
+  if (packageType === "math_module_1") return "math_module_1";
+  if (packageType === "math_module_2") return "math_module_2";
+  return null;
+}
+
+function isRwModulePackage(packageType: QuestionSet["packageType"] | undefined): boolean {
+  return packageType === "rw_module_1" || packageType === "rw_module_2";
+}
+
+function isMathModulePackage(packageType: QuestionSet["packageType"] | undefined): boolean {
+  return packageType === "math_module_1" || packageType === "math_module_2";
 }
 
 function PracticeStartButton({

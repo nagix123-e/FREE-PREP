@@ -64,6 +64,10 @@ export function getModuleIndexesForCourse(course: PracticeTestCourse): number[] 
   if (course === "math") {
     return [2, 3];
   }
+  if (course === "rw_module_1") return [0];
+  if (course === "rw_module_2") return [1];
+  if (course === "math_module_1") return [2];
+  if (course === "math_module_2") return [3];
   return TEST_MODULES.map((_, index) => index);
 }
 
@@ -92,5 +96,7 @@ export function getAttemptModeForCourse(course: PracticeTestCourse): AttemptMode
   if (course === "math") {
     return "full_hard_math_practice";
   }
+  if (course === "rw_module_1" || course === "rw_module_2") return "full_hard_rw_practice";
+  if (course === "math_module_1" || course === "math_module_2") return "full_hard_math_practice";
   return "full_hard_practice";
 }
