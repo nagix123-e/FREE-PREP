@@ -3,6 +3,7 @@ import { MathRenderer } from "../test/MathRenderer";
 import { VisualRenderer } from "../visual/VisualRenderer";
 import { AnswerComparison } from "./AnswerComparison";
 import { ExplanationBlock } from "./ExplanationBlock";
+import { StudentText } from "../test/StudentText";
 
 export function ReviewQuestionCard({ item }: { item: GradedQuestion }) {
   const question = item.question;
@@ -26,7 +27,7 @@ export function ReviewQuestionCard({ item }: { item: GradedQuestion }) {
 
       {question.passage ? (
         <div className="whitespace-pre-wrap rounded-md border border-line bg-slate-50 p-4 text-sm leading-7 text-slate-700">
-          {question.passage}
+          <StudentText>{question.passage}</StudentText>
         </div>
       ) : null}
 
@@ -38,7 +39,7 @@ export function ReviewQuestionCard({ item }: { item: GradedQuestion }) {
 
       {question.equationLatex ? <MathRenderer latex={question.equationLatex} /> : null}
 
-      <div className="whitespace-pre-wrap text-base font-medium leading-7">{question.question}</div>
+      <div className="whitespace-pre-wrap text-base font-medium leading-7"><StudentText>{question.question}</StudentText></div>
 
       {question.questionType === "multiple_choice" ? (
         <div className="space-y-2">
@@ -50,7 +51,7 @@ export function ReviewQuestionCard({ item }: { item: GradedQuestion }) {
               key={letter}
             >
               <span className="mr-2 font-semibold">{letter}.</span>
-              {text}
+              <StudentText>{text}</StudentText>
             </div>
           ))}
         </div>

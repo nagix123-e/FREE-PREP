@@ -2,6 +2,7 @@ import type { Question, ResponseRecord } from "../../types";
 import { ChoiceList } from "./ChoiceList";
 import { MathRenderer } from "./MathRenderer";
 import { StudentResponseInput } from "./StudentResponseInput";
+import { StudentText } from "./StudentText";
 
 export function QuestionPanel({
   question,
@@ -31,7 +32,7 @@ export function QuestionPanel({
         <span>Question {question.questionNumber}</span>
       </div>
       <div className="mt-4 whitespace-pre-wrap text-base font-medium leading-7 text-ink">
-        {question.question}
+        <StudentText>{question.question}</StudentText>
       </div>
 
       {question.section === "MATH" && question.equationLatex ? (

@@ -5,6 +5,7 @@ import { getQuestionSet, listQuestions } from "../lib/database";
 import { useAppStore } from "../store/appStore";
 import type { Question, QuestionSet } from "../types";
 import { VisualRenderer } from "./visual/VisualRenderer";
+import { StudentText } from "./test/StudentText";
 
 export function PreviewScreen() {
   const { selectedSetId, navigate, setDbError, tutorial, setTutorialStep } = useAppStore();
@@ -172,7 +173,7 @@ function QuestionDetail({ question }: { question: Question }) {
         </div>
         {question.passage ? (
           <div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-            {question.passage}
+            <StudentText>{question.passage}</StudentText>
           </div>
         ) : (
           <div className="mt-5 rounded-md border border-line bg-slate-50 p-4 text-sm text-muted">
@@ -191,7 +192,7 @@ function QuestionDetail({ question }: { question: Question }) {
       <article className="p-6">
         <div className="text-sm font-semibold text-slate-500">Question {question.questionNumber}</div>
         <div className="mt-3 whitespace-pre-wrap text-base font-medium leading-7 text-ink">
-          {question.question}
+          <StudentText>{question.question}</StudentText>
         </div>
 
         {question.equationLatex ? <LatexBlock latex={question.equationLatex} /> : null}
@@ -213,7 +214,7 @@ function QuestionDetail({ question }: { question: Question }) {
                 key={letter}
               >
                 <span className="mr-2 font-semibold">{letter}.</span>
-                {text}
+                <StudentText>{text}</StudentText>
               </div>
             ))}
           </div>
@@ -232,7 +233,7 @@ function QuestionDetail({ question }: { question: Question }) {
           </div>
           <div className="mt-4 text-sm font-semibold">Explanation</div>
           <div className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-            {question.explanation || "No explanation provided."}
+            <StudentText>{question.explanation || "No explanation provided."}</StudentText>
           </div>
         </div>
       </article>

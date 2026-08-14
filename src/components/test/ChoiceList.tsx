@@ -1,3 +1,5 @@
+import { StudentText } from "./StudentText";
+
 export function ChoiceList({
   choices,
   eliminatedChoices,
@@ -39,7 +41,7 @@ export function ChoiceList({
               type="button"
             >
               <span className="mr-2 font-semibold">{choice.letter}</span>
-              <span>{choice.text}</span>
+              <span><StudentText>{choice.text}</StudentText></span>
             </button>
             <button
               className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"

@@ -1,6 +1,7 @@
 import type { Question } from "../../types";
 import { VisualRenderer } from "../visual/VisualRenderer";
 import { MathRenderer } from "./MathRenderer";
+import { StudentText } from "./StudentText";
 
 export function PassagePanel({
   question
@@ -21,7 +22,7 @@ export function PassagePanel({
       </div>
       {shouldShowPassageFirst ? (
         <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-          {passageText}
+          <StudentText>{passageText}</StudentText>
         </div>
       ) : null}
       {!shouldShowPassageFirst && hasReferenceVisual ? (
@@ -36,7 +37,7 @@ export function PassagePanel({
       ) : null}
       {!shouldShowPassageFirst && !hasReferenceVisual && hasPassage ? (
         <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-          {passageText}
+          <StudentText>{passageText}</StudentText>
         </div>
       ) : null}
       {!shouldShowPassageFirst && !hasReferenceVisual && !hasPassage ? (

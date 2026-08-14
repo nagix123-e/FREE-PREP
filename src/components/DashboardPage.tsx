@@ -58,6 +58,9 @@ export function DashboardPage() {
     return <div className="text-sm text-muted">{t("dashboardLoading")}</div>;
   }
 
+  const scoreSeries = buildScoreSeries(scoreTrend, scoreMode);
+  const chartBounds = getScoreChartBounds(scoreSeries, scoreMode);
+
   async function downloadDashboardData() {
     const dashboard = dashboardRef.current;
     if (!dashboard || downloadState === "saving") return;
@@ -173,9 +176,9 @@ export function DashboardPage() {
               <p className="text-sm text-muted">{t("noGraphData")}</p>
             ) : (
               <SimpleLineChart
-                max={scoreMode === "total" ? 1600 : scoreMode === "all" ? 1600 : 800}
-                min={scoreMode === "total" ? 400 : scoreMode === "all" ? 200 : 200}
-                series={buildScoreSeries(scoreTrend, scoreMode)}
+                max={chartBounds.max}
+                min={chartBounds.min}
+                series={scoreSeries}
                 xLabels={scoreTrend.map((point) => point.label)}
               />
             )}
@@ -303,6 +306,25 @@ function buildScoreSeries(points: ScoreTrendPoint[], mode: ScoreTrendMode): Line
     series.push({ key: "math", label: "Math Practice Score", color: "#db2777", values: points.map((point) => point.math) });
   }
   return series;
+}
+
+function getScoreChartBounds(series: LineSeries[], mode: ScoreTrendMode): { min: number; max: number } {
+  const values = series.flatMap((item) => item.values.filter((value): value is number => value !== null));
+  const satMax = mode === "total" || mode === "all" ? 1600 : 800;
+
+  if (values.length === 0) return { min: 0, max: satMax };
+
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const spread = Math.max(dataMax - dataMin, mode === "total" || mode === "all" ? 80 : 40);
+  const padding = Math.max(12, Math.ceil(spread * 0.15));
+  // Keep the chart comparable while allowing its visible range to follow the
+  // actual attempts. A fixed SAT lower bound compresses otherwise meaningful
+  // changes when the selected attempts occupy only part of the score range.
+  const min = Math.max(0, Math.floor((dataMin - padding) / 10) * 10);
+  const max = Math.min(satMax, Math.ceil((dataMax + padding) / 10) * 10);
+
+  return max > min ? { min, max } : { min: Math.max(0, dataMin - 20), max: Math.min(satMax, dataMax + 20) };
 }
 
 function WeaknessTrendPanel({ trend }: { trend: WeaknessTrend | null }) {
