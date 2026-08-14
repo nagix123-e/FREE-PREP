@@ -1,5 +1,6 @@
 import type { Question } from "../../types";
 import { VisualRenderer } from "../visual/VisualRenderer";
+import { CrossTextPassage, splitCrossTextPassage } from "./CrossTextPassage";
 import { MathRenderer } from "./MathRenderer";
 import { StudentText } from "./StudentText";
 
@@ -10,6 +11,7 @@ export function PassagePanel({
 }) {
   const passageText = normalizePassageText(question.passage);
   const hasPassage = passageText.length > 0;
+  const crossTextParts = question.section === "RW" ? splitCrossTextPassage(passageText) : null;
   const hasTable = question.visualType === "table" && question.tableMarkdown.trim().length > 0;
   const hasVisualJson = question.visualType !== "none" && question.visualJson.trim().length > 0;
   const hasReferenceVisual = hasTable || hasVisualJson;
@@ -21,9 +23,13 @@ export function PassagePanel({
         {question.section === "RW" ? "Passage" : "Reference"}
       </div>
       {shouldShowPassageFirst ? (
-        <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-          <StudentText>{passageText}</StudentText>
-        </div>
+        crossTextParts ? (
+          <CrossTextPassage parts={crossTextParts} />
+        ) : (
+          <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+            <StudentText>{passageText}</StudentText>
+          </div>
+        )
       ) : null}
       {!shouldShowPassageFirst && hasReferenceVisual ? (
         <div className="mt-4">

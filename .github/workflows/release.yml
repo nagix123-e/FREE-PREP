@@ -9,20 +9,22 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and release ${{ matrix.platform }}
+  build:
+    name: Build ${{ matrix.label }} bundle
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-latest
-            args: "--bundles nsis"
-          - platform: ubuntu-latest
-            args: "--bundles appimage"
-          - platform: macos-latest
-            args: "--bundles dmg"
+          - label: Windows
+            os: windows-latest
+            bundles: "nsis,msi"
+            artifact: windows-bundles
+          - label: Linux
+            os: ubuntu-latest
+            bundles: "appimage,deb"
+            artifact: linux-bundles
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -38,7 +40,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux Tauri dependencies
-        if: matrix.platform == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
@@ -46,51 +48,61 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify macOS signing secrets
-        if: matrix.platform == 'macos-latest'
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-        run: |
-          test -n "$APPLE_CERTIFICATE"
-          test -n "$APPLE_CERTIFICATE_PASSWORD"
-          test -n "$APPLE_SIGNING_IDENTITY"
-          test -n "$APPLE_API_ISSUER"
-          test -n "$APPLE_API_KEY_ID"
-          test -n "$APPLE_API_KEY_P8"
-
-      - name: Prepare App Store Connect API key
-        if: matrix.platform == 'macos-latest'
-        env:
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-        run: |
-          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
-          printf '%s' "$APPLE_API_KEY_P8" > "$key_path"
-          echo "APPLE_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-
       - name: Build release bundles
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+        run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
+
+      - name: Prepare Windows release assets
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $releaseVersion = "${{ github.ref_name }}".TrimStart("v")
+          $output = Join-Path $env:RUNNER_TEMP "release-assets"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          $nsis = Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+          $msi = Get-ChildItem "src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          Copy-Item $nsis.FullName (Join-Path $output "FREE-PREP_$releaseVersion`_windows-x64-setup.exe")
+          Copy-Item $msi.FullName (Join-Path $output "FREE-PREP_$releaseVersion`_windows-x64.msi")
+
+      - name: Prepare Linux release assets
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          release_version="${GITHUB_REF_NAME#v}"
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          appimage=$(find src-tauri/target/release/bundle/appimage -maxdepth 1 -type f -name '*.AppImage' -print -quit)
+          deb=$(find src-tauri/target/release/bundle/deb -maxdepth 1 -type f -name '*.deb' -print -quit)
+          cp "$appimage" "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_linux-x86_64.AppImage"
+          cp "$deb" "$RUNNER_TEMP/release-assets/FREE-PREP_${release_version}_linux-amd64.deb"
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "FREE PREP ${{ github.ref_name }}"
-          releaseBody: |
-            FREE PREP for macOS, FREE PREP for Windows, and FREE PREP for Linux.
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/release-assets/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download packaged assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: FREE PREP ${{ github.ref_name }}
+          body: |
+            FREE PREP desktop installers for Windows and Linux.
 
             Download ZIP is source code for developers. General users should download the installer for their operating system from this release.
 
             Not affiliated with or endorsed by College Board.
-          releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }}
+          files: release-assets/*

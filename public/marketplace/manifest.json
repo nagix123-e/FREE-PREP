@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-15T15:07:20.149Z",
+  "updatedAt": "2026-08-14T00:00:00.000Z",
   "items": [
     {
       "id": "generated-and-audited-sat-questions-final-1",
@@ -306,111 +306,111 @@
       "id": "fromofficialpdf-sat-questions-1-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #1",
+      "title": "From official PDF#1",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.1.Fromofficialpdf.csv",
+      "filename": "From official PDF#1.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.1.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-2-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #2",
+      "title": "From official PDF#2",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.2.Fromofficialpdf.csv",
+      "filename": "From official PDF#2.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.2.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-3-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #3",
+      "title": "From official PDF#3",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.3.Fromofficialpdf.csv",
+      "filename": "From official PDF#3.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.3.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-4-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #4",
+      "title": "From official PDF#4",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.4.Fromofficialpdf.csv",
+      "filename": "From official PDF#4.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.4.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-5-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #5",
+      "title": "From official PDF#5",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.5.Fromofficialpdf.csv",
+      "filename": "From official PDF#5.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.5.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-6-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #6",
+      "title": "From official PDF#6",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.6.Fromofficialpdf.csv",
+      "filename": "From official PDF#6.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.6.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-7-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #7",
+      "title": "From official PDF#7",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.7.Fromofficialpdf.csv",
+      "filename": "From official PDF#7.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.7.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-8-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #8",
+      "title": "From official PDF#8",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.8.Fromofficialpdf.csv",
+      "filename": "From official PDF#8.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.8.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-9-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #9",
+      "title": "From official PDF#9",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.9.Fromofficialpdf.csv",
+      "filename": "From official PDF#9.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.9.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-10-fromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #10",
+      "title": "From official PDF#10",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.10.Fromofficialpdf.csv",
+      "filename": "From official PDF#10.csv",
       "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.10.Fromofficialpdf.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-11-ffromofficialpdf",
       "collection": "From official PDF",
       "source": "fromofficialpdf",
-      "title": "From official PDF #11",
+      "title": "From official PDF#11",
       "description": "Bundles converted from official PDF sources.",
       "price": "$0",
-      "filename": "SAT_questions.11.FFromofficialpdf.csv",
-      "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.11.FFromofficialpdf.csv"
+      "filename": "From official PDF#11.csv",
+      "path": "/marketplace/bundles/fromofficialpdf/SAT_questions.11.Fromofficialpdf.csv"
     }
   ]
 }
