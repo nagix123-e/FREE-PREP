@@ -54,6 +54,7 @@ const ENGLISH = {
   timer: "Timer",
   defaultPracticeLength: "Default Practice Length",
   audio: "Audio",
+  practiceMode: "Practice Mode",
   nameOnScoreCards: "Name That Appears On Score Cards",
   nameHere: "Name here",
   saveSettings: "Save Settings",

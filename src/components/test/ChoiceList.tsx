@@ -5,13 +5,17 @@ export function ChoiceList({
   eliminatedChoices,
   selectedAnswer,
   onSelect,
-  onToggleEliminated
+  onToggleEliminated,
+  onCheck,
+  checkDisabled
 }: {
   choices: Array<{ letter: string; text: string }>;
   eliminatedChoices: string[];
   selectedAnswer: string;
   onSelect: (letter: string) => void;
   onToggleEliminated: (letter: string) => void;
+  onCheck?: () => void;
+  checkDisabled?: boolean;
 }) {
   return (
     <div className="mt-6 space-y-3">
@@ -43,13 +47,25 @@ export function ChoiceList({
               <span className="mr-2 font-semibold">{choice.letter}</span>
               <span><StudentText>{choice.text}</StudentText></span>
             </button>
-            <button
-              className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-              onClick={() => onToggleEliminated(choice.letter)}
-              type="button"
-            >
-              {eliminated ? "Undo" : "Eliminate"}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              {selected && onCheck ? (
+                <button
+                  className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={checkDisabled}
+                  onClick={onCheck}
+                  type="button"
+                >
+                  Check
+                </button>
+              ) : null}
+              <button
+                className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                onClick={() => onToggleEliminated(choice.letter)}
+                type="button"
+              >
+                {eliminated ? "Undo" : "Eliminate"}
+              </button>
+            </div>
           </div>
         );
       })}

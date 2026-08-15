@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultPracticeLength: 20,
   fullscreenTestMode: false,
   audioEnabled: true,
+  practiceMode: "regular",
   scoreCardName: ""
 };
 

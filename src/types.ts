@@ -206,6 +206,7 @@ export interface AppSettings {
   defaultPracticeLength: number;
   fullscreenTestMode: boolean;
   audioEnabled: boolean;
+  practiceMode: "regular" | "focused";
   scoreCardName: string;
 }
 

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { applyHighlight, removeHighlight, replaceHighlightColor } from "../../services/highlightService";
 import { addToReviewList } from "../../services/reviewListService";
+import { loadSettings } from "../../services/settingsService";
 import { useAppStore } from "../../store/appStore";
 import { usePracticeStore } from "../../store/practiceStore";
-import type { HighlightRecord, ResponseRecord } from "../../types";
+import type { AppSettings, HighlightRecord, ResponseRecord } from "../../types";
 import { CalculatorModal } from "../test/CalculatorModal";
 import { HighlightToolbar } from "../test/HighlightToolbar";
 import { KeyboardShortcutHelp } from "../test/KeyboardShortcutHelp";
@@ -45,9 +46,17 @@ export function PracticeRunnerPage() {
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [practiceMode, setPracticeMode] = useState<AppSettings["practiceMode"]>("regular");
+  const [checkedQuestionId, setCheckedQuestionId] = useState<number | null>(null);
+  const [explainingQuestionId, setExplainingQuestionId] = useState<number | null>(null);
   const question = questions[index] ?? null;
   const response = question?.id ? responsesByQuestionId[question.id] ?? null : null;
   const isLastQuestion = index >= questions.length - 1;
+  const instantCheckEnabled = practiceMode === "focused" && (mode === "domain_practice" || mode === "mistake_practice");
+
+  useEffect(() => {
+    loadSettings().then((settings) => setPracticeMode(settings.practiceMode)).catch(() => setPracticeMode("regular"));
+  }, []);
 
   useEffect(() => {
     if (!timerEnabled || paused || remainingTimeSec <= 0) return;
@@ -96,11 +105,15 @@ export function PracticeRunnerPage() {
   async function handleNext() {
     if (!isLastQuestion) {
       await setIndex(index + 1);
+      setCheckedQuestionId(null);
+      setExplainingQuestionId(null);
     }
   }
 
   async function handleJump(nextIndex: number) {
     await setIndex(nextIndex);
+    setCheckedQuestionId(null);
+    setExplainingQuestionId(null);
     setMenuOpen(false);
   }
 
@@ -122,6 +135,16 @@ export function PracticeRunnerPage() {
     if (question.id) {
       await addToReviewList(question.id, "Added from practice", 2);
     }
+  }
+
+  async function handleAnswer(value: string) {
+    if (!question) return;
+    await answer(question, value);
+    setCheckedQuestionId(null);
+  }
+
+  function handleCheck() {
+    if (question?.id && response?.selectedAnswer) setCheckedQuestionId(question.id);
   }
 
   async function handlePause() {
@@ -239,11 +262,14 @@ export function PracticeRunnerPage() {
       <div className="test-runner-grid grid min-h-0 flex-1 border-x border-line bg-white">
         <PassagePanel question={question} />
         <QuestionPanel
-          onSelectAnswer={(value) => void answer(question, value)}
-          onStudentResponse={(value) => void answer(question, value)}
+          onSelectAnswer={(value) => void handleAnswer(value)}
+          onStudentResponse={(value) => void handleAnswer(value)}
           onToggleEliminated={(choice) => void toggleEliminatedChoice(question, choice)}
           question={question}
           response={response}
+          onCheck={instantCheckEnabled ? handleCheck : undefined}
+          showFeedback={instantCheckEnabled && checkedQuestionId === question.id}
+          showExplanation={instantCheckEnabled && explainingQuestionId === question.id}
         />
       </div>
 
@@ -254,6 +280,8 @@ export function PracticeRunnerPage() {
         onNext={() => void handleNext()}
         onOpenMenu={() => setMenuOpen(true)}
         onReview={() => void handleFinishPractice()}
+        onExplanation={instantCheckEnabled ? () => setExplainingQuestionId(explainingQuestionId === question.id ? null : question.id ?? null) : undefined}
+        explanationActive={instantCheckEnabled && explainingQuestionId === question.id}
         reviewLabel="Finish Practice"
         submitLabel="Finish Practice"
         submitMode={isLastQuestion}

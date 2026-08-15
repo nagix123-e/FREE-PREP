@@ -5,6 +5,8 @@ export function TestNavigation({
   onNext,
   onOpenMenu,
   onReview,
+  onExplanation,
+  explanationActive = false,
   submitMode = false,
   reviewLabel = "Review Module",
   submitLabel = "Submit Scores"
@@ -15,6 +17,8 @@ export function TestNavigation({
   onNext: () => void;
   onOpenMenu: () => void;
   onReview: () => void;
+  onExplanation?: () => void;
+  explanationActive?: boolean;
   submitMode?: boolean;
   reviewLabel?: string;
   submitLabel?: string;
@@ -47,14 +51,25 @@ export function TestNavigation({
           {reviewLabel}
         </button>
       </div>
-      <button
-        className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-        disabled={!submitMode && !canGoNext}
-        onClick={primaryAction}
-        type="button"
-      >
-        {submitMode ? submitLabel : "Next"}
-      </button>
+      <div className="flex items-center gap-3">
+        {onExplanation ? (
+          <button
+            className={`rounded-md border border-line px-4 py-2 text-sm font-semibold ${explanationActive ? "border-teal-700 bg-teal-700 text-white" : "text-slate-700 hover:bg-slate-50"}`}
+            onClick={onExplanation}
+            type="button"
+          >
+            Explanation
+          </button>
+        ) : null}
+        <button
+          className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          disabled={!submitMode && !canGoNext}
+          onClick={primaryAction}
+          type="button"
+        >
+          {submitMode ? submitLabel : "Next"}
+        </button>
+      </div>
     </footer>
   );
 }

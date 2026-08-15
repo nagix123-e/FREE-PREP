@@ -46,6 +46,7 @@ export function SettingsScreen() {
         <DropdownSelect label={t("timer")} value={settings.timerDefaultVisible ? "show" : "hide"} onChange={(value) => setSettings({ ...settings, timerDefaultVisible: value === "show" })} options={showHideOptions(t)} />
         <DropdownSelect label={t("defaultPracticeLength")} value={settings.defaultPracticeLength.toString()} onChange={(value) => setSettings({ ...settings, defaultPracticeLength: Number(value) })} options={PRACTICE_LENGTH_OPTIONS} />
         <DropdownSelect label={t("audio")} value={settings.audioEnabled ? "on" : "off"} onChange={(value) => setSettings({ ...settings, audioEnabled: value === "on" })} options={audioOptions(t)} />
+        <DropdownSelect label={t("practiceMode")} value={settings.practiceMode} onChange={(value) => setSettings({ ...settings, practiceMode: value as AppSettings["practiceMode"] })} options={PRACTICE_MODE_OPTIONS} />
         <label className="settings-name-field">
           <span className="settings-name-field__label">{t("nameOnScoreCards")}</span>
           <input
@@ -93,3 +94,8 @@ const PRACTICE_LENGTH_OPTIONS: DropdownOption[] = [10, 20, 30, 50, 100].map((val
   value: value.toString(),
   label: value.toString()
 }));
+
+const PRACTICE_MODE_OPTIONS: DropdownOption[] = [
+  { value: "regular", label: "Same as regular test" },
+  { value: "focused", label: "Practice focused" }
+];
