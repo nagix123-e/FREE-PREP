@@ -46,7 +46,9 @@ export function StudentText({ children }: { children: string }): ReactNode {
     token.type === "underline" ? (
       <u key={`underline-${index}`}>{token.value}</u>
     ) : token.type === "blank" ? (
-      <span aria-label="blank" className="student-text-blank" key={`blank-${index}`} />
+      <span aria-label="blank" className="student-text-blank" key={`blank-${index}`}>
+        {"\u00a0"}
+      </span>
     ) : (
       token.value
     )
