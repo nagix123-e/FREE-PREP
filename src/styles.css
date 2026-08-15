@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+.student-text-blank {
+  display: inline-block;
+  width: 3.25em;
+  height: 1em;
+  margin: 0 0.14em;
+  vertical-align: baseline;
+  border-bottom: 0.1em solid currentColor;
+}
+
 * {
   box-sizing: border-box;
 }

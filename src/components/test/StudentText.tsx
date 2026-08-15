@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 export type StudentTextToken =
   | { type: "text"; value: string }
-  | { type: "underline"; value: string };
+  | { type: "underline"; value: string }
+  | { type: "blank" };
 
 /**
  * Tokenize the canonical underline markup used in current content and the
@@ -11,7 +12,9 @@ export type StudentTextToken =
  */
 export function tokenizeStudentText(value: string): StudentTextToken[] {
   const input = String(value ?? "");
-  const marker = /<u>([\s\S]*?)<\/u>|__([\s\S]*?)__/g;
+  // Four underscores are accepted for legacy CSVs; the boundary guards keep
+  // three- and six-character runs from being partially interpreted.
+  const marker = /<u>([\s\S]*?)<\/u>|(?<!_)_{4,5}(?!_)|__([\s\S]*?)__/g;
   const matches = [...input.matchAll(marker)];
 
   if (matches.length === 0) return [{ type: "text", value: input }];
@@ -22,7 +25,11 @@ export function tokenizeStudentText(value: string): StudentTextToken[] {
   for (const match of matches) {
     const start = match.index ?? 0;
     if (start > cursor) tokens.push({ type: "text", value: input.slice(cursor, start) });
-    tokens.push({ type: "underline", value: match[1] ?? match[2] ?? "" });
+    if (match[0].startsWith("_")) {
+      tokens.push({ type: "blank" });
+    } else {
+      tokens.push({ type: "underline", value: match[1] ?? match[2] ?? "" });
+    }
     cursor = start + match[0].length;
   }
 
@@ -36,6 +43,12 @@ export function tokenizeStudentText(value: string): StudentTextToken[] {
  */
 export function StudentText({ children }: { children: string }): ReactNode {
   return tokenizeStudentText(children).map((token, index) =>
-    token.type === "underline" ? <u key={`underline-${index}`}>{token.value}</u> : token.value
+    token.type === "underline" ? (
+      <u key={`underline-${index}`}>{token.value}</u>
+    ) : token.type === "blank" ? (
+      <span aria-label="blank" className="student-text-blank" key={`blank-${index}`} />
+    ) : (
+      token.value
+    )
   );
 }
