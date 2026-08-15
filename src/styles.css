@@ -1719,7 +1719,6 @@ textarea:focus-visible {
 }
 
 .achievement-strip-header {
-  all: unset;
   box-sizing: border-box;
   width: 100%;
   min-height: 78px;
@@ -1728,20 +1727,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 18px;
   padding: 16px 20px;
-  cursor: pointer;
   background: #ffffff;
-  transition:
-    background 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.achievement-strip-header:hover {
-  background: #f8fafc;
-}
-
-.achievement-strip-header:focus-visible {
-  outline: 3px solid #38bdf8;
-  outline-offset: -5px;
 }
 
 .achievement-strip-action {
@@ -1751,13 +1737,30 @@ textarea:focus-visible {
   min-width: 116px;
   min-height: 46px;
   padding: 0 24px;
+  border: 0;
   border-radius: 999px;
   color: #ffffff;
   background: linear-gradient(135deg, #222cb5, #05d1f5);
   box-shadow: 0 12px 24px rgba(34, 44, 181, 0.18);
+  cursor: pointer;
   font-size: 14px;
   font-weight: 900;
   line-height: 1;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.achievement-strip-action:hover {
+  box-shadow: 0 14px 28px rgba(34, 44, 181, 0.28);
+  transform: translateY(-1px);
+}
+
+.achievement-strip-action:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+.achievement-strip-action:active {
+  transform: translateY(0);
 }
 
 .achievement-stack-title {

@@ -612,15 +612,22 @@ function BadgeStack({
 }) {
   return (
     <section className={`achievement-badge-panel ${expanded ? "is-expanded" : ""}`}>
-      <button className="achievement-strip-header" onClick={onToggle} type="button">
+      <div className="achievement-strip-header">
         <span>
           <span className="achievement-stack-title">Badges</span>
           <span className="achievement-stack-subtitle">
             {badges.length} unlocked badge{badges.length === 1 ? "" : "s"}
           </span>
         </span>
-        <span className="achievement-strip-action">{expanded ? "Revert" : "Expand"}</span>
-      </button>
+        <button
+          aria-expanded={expanded}
+          className="achievement-strip-action"
+          onClick={onToggle}
+          type="button"
+        >
+          {expanded ? "Revert" : "Expand"}
+        </button>
+      </div>
       {expanded ? (
         badges.length === 0 ? (
           <div className="achievement-empty">No badges yet.</div>
@@ -718,17 +725,22 @@ function AchievementStack({
 }) {
   return (
     <section className={`achievement-stack-panel ${expanded ? "is-expanded" : ""}`}>
-      <button className="achievement-strip-header" onClick={onToggle} type="button">
+      <div className="achievement-strip-header">
         <div>
           <h3 className="achievement-stack-title">{CATEGORY_LABELS[category]} Cards</h3>
           <p className="achievement-stack-subtitle">
             {items.length} saved result{items.length === 1 ? "" : "s"}
           </p>
         </div>
-        <span className="achievement-strip-action">
+        <button
+          aria-expanded={expanded}
+          className="achievement-strip-action"
+          onClick={onToggle}
+          type="button"
+        >
           {expanded ? "Revert" : "Expand"}
-        </span>
-      </button>
+        </button>
+      </div>
 
       {expanded ? items.length === 0 ? (
         <div className="achievement-empty">No completed {CATEGORY_LABELS[category]} score yet.</div>
