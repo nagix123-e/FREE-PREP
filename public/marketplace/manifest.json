@@ -1,306 +1,206 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-14T00:00:00.000Z",
+  "updatedAt": "2026-08-16T00:00:00.000Z",
   "items": [
     {
-      "id": "generated-and-audited-sat-questions-final-1",
+      "id": "generated-and-audited-sat-questions-1",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #1",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.1.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.1.csv"
+      "filename": "Generated and audited #1.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.1.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-2",
+      "id": "generated-and-audited-sat-questions-2",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #2",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.2.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.2.csv"
+      "filename": "Generated and audited #2.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.2.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-3",
+      "id": "generated-and-audited-sat-questions-3",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #3",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.3.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.3.csv"
+      "filename": "Generated and audited #3.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.3.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-4",
+      "id": "generated-and-audited-sat-questions-4",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #4",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.4.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.4.csv"
+      "filename": "Generated and audited #4.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.4.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-5",
+      "id": "generated-and-audited-sat-questions-5",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #5",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.5.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.5.csv"
+      "filename": "Generated and audited #5.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.5.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-6",
+      "id": "generated-and-audited-sat-questions-6",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #6",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.6.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.6.csv"
+      "filename": "Generated and audited #6.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.6.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-7",
+      "id": "generated-and-audited-sat-questions-7",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #7",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.7.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.7.csv"
+      "filename": "Generated and audited #7.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.7.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-8",
+      "id": "generated-and-audited-sat-questions-8",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #8",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.8.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.8.csv"
+      "filename": "Generated and audited #8.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.8.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-9",
+      "id": "generated-and-audited-sat-questions-9",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #9",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.9.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.9.csv"
+      "filename": "Generated and audited #9.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.9.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-10",
+      "id": "generated-and-audited-sat-questions-10",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #10",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.10.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.10.csv"
+      "filename": "Generated and audited #10.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.10.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-11",
+      "id": "generated-and-audited-sat-questions-11",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #11",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.11.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.11.csv"
+      "filename": "Generated and audited #11.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.11.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-12",
+      "id": "generated-and-audited-sat-questions-12",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #12",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.12.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.12.csv"
+      "filename": "Generated and audited #12.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.12.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-13",
+      "id": "generated-and-audited-sat-questions-13",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #13",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.13.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.13.csv"
+      "filename": "Generated and audited #13.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.13.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-14",
+      "id": "generated-and-audited-sat-questions-14",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #14",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.14.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.14.csv"
+      "filename": "Generated and audited #14.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.14.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-15",
+      "id": "generated-and-audited-sat-questions-15",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #15",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.15.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.15.csv"
+      "filename": "Generated and audited #15.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.15.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-16",
+      "id": "generated-and-audited-sat-questions-16",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #16",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.16.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.16.csv"
+      "filename": "Generated and audited #16.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.16.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-17",
+      "id": "generated-and-audited-sat-questions-17",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #17",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.17.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.17.csv"
+      "filename": "Generated and audited #17.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.17.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-18",
+      "id": "generated-and-audited-sat-questions-18",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #18",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.18.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.18.csv"
+      "filename": "Generated and audited #18.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.18.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-19",
+      "id": "generated-and-audited-sat-questions-19",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #19",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.19.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.19.csv"
+      "filename": "Generated and audited #19.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.19.csv"
     },
     {
-      "id": "generated-and-audited-sat-questions-final-20",
+      "id": "generated-and-audited-sat-questions-20",
       "collection": "Generated and audited",
       "source": "generated-and-audited",
       "title": "Generated and audited #20",
       "description": "AI generated, audited SAT-style practice bundles.",
       "price": "$0",
-      "filename": "SAT_questions.final.20.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.20.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-21",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #21",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.21.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.21.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-22",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #22",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.22.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.22.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-23",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #23",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.23.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.23.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-24",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #24",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.24.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.24.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-25",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #25",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.25.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.25.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-26",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #26",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.26.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.26.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-27",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #27",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.27.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.27.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-28",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #28",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.28.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.28.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-29",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #29",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.29.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.29.csv"
-    },
-    {
-      "id": "generated-and-audited-sat-questions-final-30",
-      "collection": "Generated and audited",
-      "source": "generated-and-audited",
-      "title": "Generated and audited #30",
-      "description": "AI generated, audited SAT-style practice bundles.",
-      "price": "$0",
-      "filename": "SAT_questions.final.30.csv",
-      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.final.30.csv"
+      "filename": "Generated and audited #20.csv",
+      "path": "/marketplace/bundles/generated-and-audited/SAT_questions.20.csv"
     },
     {
       "id": "fromofficialpdf-sat-questions-1-fromofficialpdf",
