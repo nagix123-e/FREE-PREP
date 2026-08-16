@@ -61,17 +61,13 @@ export async function removeHighlight(input: Omit<HighlightRecord, "id" | "creat
     `DELETE FROM highlights
      WHERE attempt_id = $1
        AND question_id = $2
-       AND (
-         (start_offset = $3 AND end_offset = $4)
-         OR (selected_text = $5 AND color = $6)
-       )`,
+       AND start_offset = $3
+       AND end_offset = $4`,
     [
       input.attemptId,
       input.questionId,
       input.startOffset,
-      input.endOffset,
-      input.selectedText,
-      input.color
+      input.endOffset
     ]
   );
 }
@@ -83,13 +79,11 @@ export async function replaceHighlightColor(input: Omit<HighlightRecord, "id" | 
      FROM highlights
      WHERE attempt_id = $1
        AND question_id = $2
-       AND (
-         (start_offset = $3 AND end_offset = $4)
-         OR selected_text = $5
-       )
+       AND start_offset = $3
+       AND end_offset = $4
      ORDER BY created_at DESC
      LIMIT 1`,
-    [input.attemptId, input.questionId, input.startOffset, input.endOffset, input.selectedText]
+    [input.attemptId, input.questionId, input.startOffset, input.endOffset]
   );
   const existing = existingRows[0];
 

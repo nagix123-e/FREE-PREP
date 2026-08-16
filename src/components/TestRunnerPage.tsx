@@ -11,6 +11,14 @@ import {
 import { MarkForReviewButton } from "./test/MarkForReviewButton";
 import { CalculatorModal } from "./test/CalculatorModal";
 import { HighlightToolbar } from "./test/HighlightToolbar";
+import {
+  createHighlightMarker,
+  findSelectedHighlightMarker,
+  getHighlightMarkerColor,
+  getHighlightMarkerOffsets,
+  setHighlightMarkerColor,
+  unwrapHighlightMarker
+} from "./test/highlightDom";
 import { KeyboardShortcutHelp } from "./test/KeyboardShortcutHelp";
 import { NotesPanel } from "./test/NotesPanel";
 import { PauseDialog } from "./test/PauseDialog";
@@ -217,13 +225,16 @@ export function TestRunnerPage() {
     const textForStorage = (existingMarker?.textContent ?? selectedText).trim();
     if (!textForStorage) return;
     const passage = currentQuestion.passage || "";
-    const startOffset = Math.max(0, passage.indexOf(textForStorage));
+    const fallbackStartOffset = Math.max(0, passage.indexOf(textForStorage));
+    const { startOffset, endOffset } = existingMarker
+      ? getHighlightMarkerOffsets(existingMarker, fallbackStartOffset, textForStorage.length)
+      : { startOffset: fallbackStartOffset, endOffset: fallbackStartOffset + textForStorage.length };
     const highlightInput = {
       attemptId: attempt.id,
       questionId: currentQuestion.id,
       selectedText: textForStorage,
       startOffset,
-      endOffset: startOffset + textForStorage.length,
+      endOffset,
       color
     };
 
@@ -240,9 +251,7 @@ export function TestRunnerPage() {
       } else {
         const action = await applyHighlight(highlightInput);
         if (action === "removed") return;
-        const marker = document.createElement("mark");
-        marker.className = `practice-highlight practice-highlight-${color}`;
-        range.surroundContents(marker);
+        createHighlightMarker(range, color, startOffset, endOffset);
       }
     } catch {
       // Saving still succeeds even if the browser cannot wrap a cross-node selection.
@@ -326,9 +335,10 @@ export function TestRunnerPage() {
       </header>
 
       <div className="test-runner-grid grid min-h-0 flex-1 border-x border-line bg-white">
-        <PassagePanel question={currentQuestion} />
+        <PassagePanel key={`passage-${currentQuestion.id}`} question={currentQuestion} />
         <div className={`h-full min-h-0 ${tutorial.active && tutorial.step === "answer_one_rw" ? "tutorial-active-target tutorial-target-ring test-question-target" : ""}`}>
         <QuestionPanel
+          key={`question-${currentQuestion.id}`}
           onSelectAnswer={(answer) => void handleSelectAnswer(answer)}
           onStudentResponse={(answer) => void setStudentResponse(currentQuestion, answer)}
           onToggleEliminated={(choice) => void toggleEliminatedChoice(currentQuestion, choice)}
@@ -377,47 +387,4 @@ export function TestRunnerPage() {
       {shortcutsOpen ? <KeyboardShortcutHelp onClose={() => setShortcutsOpen(false)} /> : null}
     </div>
   );
-}
-
-function findSelectedHighlightMarker(range: Range): HTMLElement | null {
-  const start =
-    range.startContainer instanceof HTMLElement
-      ? range.startContainer
-      : range.startContainer.parentElement;
-  const end =
-    range.endContainer instanceof HTMLElement
-      ? range.endContainer
-      : range.endContainer.parentElement;
-  const startMarker = start?.closest("mark.practice-highlight");
-  const endMarker = end?.closest("mark.practice-highlight");
-
-  if (startMarker && startMarker === endMarker && startMarker instanceof HTMLElement) {
-    return startMarker;
-  }
-  if (startMarker && range.commonAncestorContainer === startMarker && startMarker instanceof HTMLElement) {
-    return startMarker;
-  }
-  return null;
-}
-
-function setHighlightMarkerColor(marker: HTMLElement, color: "yellow" | "blue" | "pink"): void {
-  marker.classList.remove("practice-highlight-yellow", "practice-highlight-blue", "practice-highlight-pink");
-  marker.classList.add(`practice-highlight-${color}`);
-}
-
-function getHighlightMarkerColor(marker: HTMLElement): "yellow" | "blue" | "pink" | null {
-  if (marker.classList.contains("practice-highlight-blue")) return "blue";
-  if (marker.classList.contains("practice-highlight-pink")) return "pink";
-  if (marker.classList.contains("practice-highlight-yellow")) return "yellow";
-  return null;
-}
-
-function unwrapHighlightMarker(marker: HTMLElement): void {
-  const parent = marker.parentNode;
-  if (!parent) return;
-  while (marker.firstChild) {
-    parent.insertBefore(marker.firstChild, marker);
-  }
-  parent.removeChild(marker);
-  parent.normalize();
 }
