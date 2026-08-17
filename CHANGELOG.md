@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+
+- Added password-protected Kiosk Mode for local supervised sessions.
+- Kiosk controls now use one state-aware Start or End button in Settings.
+
 ## 1.2.7.1
 
 - Remove a Spaced Review item from the due queue after two consecutive correct review responses, while retaining completion state so historical mistake backfill does not re-add it.
