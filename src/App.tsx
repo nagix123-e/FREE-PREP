@@ -26,6 +26,7 @@ import { DeviceCheckPage } from "./components/testStart/DeviceCheckPage";
 import { RulesAndToolsPage } from "./components/testStart/RulesAndToolsPage";
 import { TestOverviewPage } from "./components/testStart/TestOverviewPage";
 import { listQuestionSets } from "./lib/database";
+import { getKioskModeStatus, KIOSK_MODE_CHANGE_EVENT } from "./services/kioskModeService";
 import { useAppStore } from "./store/appStore";
 import type { RouteKey } from "./types";
 import { SystemUiLocalizer, translate, tutorialFallback, useSystemLanguage } from "./i18n";
@@ -89,12 +90,13 @@ export default function App() {
   }, [route, setTutorialStep, tutorial.active, tutorial.step]);
 
   if (bootLoading) {
-    return <AppLoadingScreen />;
+    return <><KioskGestureGuard /><AppLoadingScreen /></>;
   }
 
   if (route === "test") {
     return (
       <>
+        <KioskGestureGuard />
         {tutorial.active ? (
           <>
             <div className="tutorial-block-layer" aria-hidden="true" />
@@ -106,13 +108,15 @@ export default function App() {
     );
   }
   if (route === "practiceRunner") {
-    return <PracticeRunnerPage />;
+    return <><KioskGestureGuard /><PracticeRunnerPage /></>;
   }
   if (route === "teacherBuilder") {
-    return <SystemUiLocalizer><TeacherBuilderPage /></SystemUiLocalizer>;
+    return <><KioskGestureGuard /><SystemUiLocalizer><TeacherBuilderPage /></SystemUiLocalizer></>;
   }
 
   return (
+    <>
+    <KioskGestureGuard />
     <SystemUiLocalizer>
       <div className="min-h-screen bg-slate-50 text-ink">
       <div className="app-shell-grid grid min-h-screen">
@@ -249,7 +253,57 @@ export default function App() {
       </div>
       </div>
     </SystemUiLocalizer>
+    </>
   );
+}
+
+function KioskGestureGuard() {
+  const [kioskActive, setKioskActive] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getKioskModeStatus().then((active) => {
+      if (mounted) setKioskActive(active);
+    }).catch(() => {
+      if (mounted) setKioskActive(false);
+    });
+
+    const handleModeChange = (event: Event) => setKioskActive((event as CustomEvent<boolean>).detail);
+    window.addEventListener(KIOSK_MODE_CHANGE_EVENT, handleModeChange);
+    return () => {
+      mounted = false;
+      window.removeEventListener(KIOSK_MODE_CHANGE_EVENT, handleModeChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!kioskActive) return;
+
+    const preventHorizontalNavigation = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) event.preventDefault();
+    };
+    const preventGestureNavigation = (event: Event) => event.preventDefault();
+    const preventBrowserShortcuts = (event: KeyboardEvent) => {
+      const browserNavigation = event.key === "BrowserBack" || event.key === "BrowserForward";
+      const modifiedNavigation = (event.metaKey || event.ctrlKey) && ["[", "]", "ArrowLeft", "ArrowRight", "Tab"].includes(event.key);
+      if (browserNavigation || modifiedNavigation) event.preventDefault();
+    };
+
+    window.addEventListener("wheel", preventHorizontalNavigation, { capture: true, passive: false });
+    window.addEventListener("gesturestart", preventGestureNavigation, { capture: true });
+    window.addEventListener("gesturechange", preventGestureNavigation, { capture: true });
+    window.addEventListener("gestureend", preventGestureNavigation, { capture: true });
+    window.addEventListener("keydown", preventBrowserShortcuts, { capture: true });
+    return () => {
+      window.removeEventListener("wheel", preventHorizontalNavigation, { capture: true });
+      window.removeEventListener("gesturestart", preventGestureNavigation, { capture: true });
+      window.removeEventListener("gesturechange", preventGestureNavigation, { capture: true });
+      window.removeEventListener("gestureend", preventGestureNavigation, { capture: true });
+      window.removeEventListener("keydown", preventBrowserShortcuts, { capture: true });
+    };
+  }, [kioskActive]);
+
+  return null;
 }
 
 function TutorialBanner({ language, onExit }: { language: SystemLanguage; onExit: () => void }) {

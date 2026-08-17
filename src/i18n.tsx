@@ -145,7 +145,23 @@ const ENGLISH = {
   selectedBundles: "Selected bundles",
   selectBundles: "Select any number of bundles from the marketplace.",
   previewPrice: "Preview price",
-  unexpectedDatabaseError: "An unexpected database error occurred."
+  unexpectedDatabaseError: "An unexpected database error occurred.",
+  kioskMode: "Kiosk Mode",
+  kioskModeDescription: "Keeps FREE PREP fullscreen and on top until you enter the session password here. Restarting FREE PREP ends kiosk mode.",
+  startKioskMode: "Start Kiosk Mode",
+  endKioskMode: "End Kiosk Mode",
+  kioskModeActive: "Kiosk mode is active.",
+  kioskModeStarted: "Kiosk mode started.",
+  kioskModeEnded: "Kiosk mode ended.",
+  setKioskPassword: "Set Kiosk Password",
+  enterKioskPassword: "Enter Kiosk Password",
+  kioskPassword: "Password",
+  confirmKioskPassword: "Confirm Password",
+  kioskPasswordHint: "Use at least 6 characters. This password exists only until FREE PREP is closed or restarted.",
+  endKioskModePrompt: "Enter the password used to start kiosk mode.",
+  kioskPasswordMismatch: "The passwords do not match.",
+  kioskPasswordError: "Could not update kiosk mode.",
+  cancel: "Cancel"
 } as const;
 
 const TRANSLATIONS: Record<Exclude<SystemLanguage, "en">, Partial<Record<TranslationKey, string>>> = {
@@ -165,6 +181,22 @@ const TRANSLATIONS: Record<Exclude<SystemLanguage, "en">, Partial<Record<Transla
     home: "होम", dashboard: "डैशबोर्ड", marketplace: "मार्केटप्लेस", importCsv: "CSV आयात करें", questionSets: "प्रश्न सेट", scoreHistory: "स्कोर इतिहास", achievements: "उपलब्धियां", spacedReview: "अंतराल पुनरावृत्ति", mistakePractice: "गलती अभ्यास", domainPractice: "विषय अभ्यास", reviewList: "पुनरावृत्ति सूची", statistics: "आंकड़े", settings: "सेटिंग्स", questionMakerConsole: "प्रश्न निर्माण कंसोल", tutorial: "ट्यूटोरियल", savedSets: "सहेजे गए सेट", storedInLocalSqlite: "स्थानीय SQLite में संग्रहीत", scoreDisclaimer: "केवल अभ्यास और अनुमानित स्कोर।", systemLanguage: "सिस्टम भाषा", timer: "टाइमर", defaultPracticeLength: "डिफ़ॉल्ट अभ्यास लंबाई", audio: "ऑडियो", nameOnScoreCards: "स्कोर कार्ड पर दिखने वाला नाम", nameHere: "नाम लिखें", saveSettings: "सेटिंग्स सहेजें", settingsSaved: "सेटिंग्स स्थानीय रूप से सहेजी गईं।", keyboardShortcuts: "कीबोर्ड शॉर्टकट", show: "दिखाएं", hide: "छिपाएं", on: "चालू", off: "बंद", loading: "लोड हो रहा है...", tutorialMode: "ट्यूटोरियल मोड · चरण {step}/{total}", exitTutorial: "ट्यूटोरियल से बाहर निकलें", buildLibrary: "स्थानीय SAT अभ्यास लाइब्रेरी बनाएं।", libraryStatus: "लाइब्रेरी स्थिति", viewSets: "सेट देखें", questionSetsCount: "प्रश्न सेट", questions: "प्रश्न", reviewListCount: "पुनरावृत्ति सूची", bestScore: "सर्वश्रेष्ठ स्कोर", recentScores: "हाल के स्कोर", weakAreas: "कमजोर क्षेत्र", upcomingGoals: "अगले लक्ष्य", suggestedNextStep: "सुझाया गया अगला कदम", dashboardLoading: "डैशबोर्ड लोड हो रहा है...", downloadDashboardData: "डैशबोर्ड डेटा डाउनलोड करें", scoreTrendChart: "स्कोर रुझान चार्ट", scoresEstimateOnly: "स्कोर केवल अभ्यास अनुमान हैं।", recommendedPractice: "सुझाया गया अभ्यास", weaknessTrend: "कमजोरी का रुझान", noData: "कोई डेटा नहीं", noGraphData: "अभी कोई ग्राफ डेटा नहीं है। रुझान देखने के लिए अभ्यास टेस्ट पूरा करें।", savedQuestionSets: "सहेजे गए प्रश्न सेट", importedLocally: "आयातित सेट स्थानीय SQLite में सहेजे जाते हैं।", noQuestionSets: "अभी कोई प्रश्न सेट नहीं है", importToBegin: "शुरू करने के लिए एक मान्य पूर्ण-टेस्ट CSV आयात करें।", name: "नाम", imported: "आयातित", type: "प्रकार", status: "स्थिति", done: "पूर्ण", spacedReviewLoading: "अंतराल पुनरावृत्ति लोड हो रही है...", dueNow: "अभी देय", upcoming: "आगामी", totalScheduled: "कुल निर्धारित", startReview: "पुनरावृत्ति शुरू करें", caughtUp: "आप पूरी तरह तैयार हैं।", reviewIntervals: "पुनरावृत्ति अंतराल", marketDownloadGithub: "GitHub से मार्केटप्लेस डाउनलोड", marketTitle: "SAT प्रश्न सेट मार्केटप्लेस", marketDescription: "CSV बंडल सीधे इस ऐप में जोड़े जा सकते हैं। सभी बंडल $0 के हैं और स्थानीय SQLite में आयात होते हैं।", loadingMarketplace: "मार्केटप्लेस बंडल लोड हो रहे हैं...", previewCheckout: "पूर्वावलोकन चेकआउट", selectedBundles: "चुने गए बंडल", selectBundles: "मार्केटप्लेस से किसी भी संख्या में बंडल चुनें।", previewPrice: "पूर्वावलोकन मूल्य"
   }
 };
+
+Object.assign(TRANSLATIONS.ja, {
+  kioskMode: "キオスクモード", kioskModeDescription: "パスワードをこの画面で入力するまで、FREE PREPを全画面かつ最前面に保ちます。FREE PREPを終了または再起動すると解除されます。", startKioskMode: "キオスクモードを開始", endKioskMode: "キオスクモードを終了", kioskModeActive: "キオスクモードは有効です。", kioskModeStarted: "キオスクモードを開始しました。", kioskModeEnded: "キオスクモードを終了しました。", setKioskPassword: "キオスクパスワードを設定", enterKioskPassword: "キオスクパスワードを入力", kioskPassword: "パスワード", confirmKioskPassword: "パスワードを確認", kioskPasswordHint: "6文字以上で設定してください。このパスワードはFREE PREPを終了または再起動するまでだけ有効です。", endKioskModePrompt: "キオスクモード開始時に設定したパスワードを入力してください。", kioskPasswordMismatch: "パスワードが一致しません。", kioskPasswordError: "キオスクモードを更新できませんでした。", cancel: "キャンセル"
+});
+Object.assign(TRANSLATIONS["zh-CN"], {
+  kioskMode: "自助模式", kioskModeDescription: "FREE PREP 将保持全屏并置顶，直到您在此输入本次会话的密码。重启 FREE PREP 会结束此模式。", startKioskMode: "开始自助模式", endKioskMode: "结束自助模式", kioskModeActive: "自助模式已启用。", kioskModeStarted: "自助模式已开始。", kioskModeEnded: "自助模式已结束。", setKioskPassword: "设置自助密码", enterKioskPassword: "输入自助密码", kioskPassword: "密码", confirmKioskPassword: "确认密码", kioskPasswordHint: "请使用至少 6 个字符。该密码仅在 FREE PREP 关闭或重启前有效。", endKioskModePrompt: "请输入开始自助模式时使用的密码。", kioskPasswordMismatch: "两次密码不一致。", kioskPasswordError: "无法更新自助模式。", cancel: "取消"
+});
+Object.assign(TRANSLATIONS["zh-TW"], {
+  kioskMode: "自助模式", kioskModeDescription: "FREE PREP 會維持全螢幕及最上層顯示，直到您在此輸入本次工作階段密碼。重新啟動 FREE PREP 會結束此模式。", startKioskMode: "開始自助模式", endKioskMode: "結束自助模式", kioskModeActive: "自助模式已啟用。", kioskModeStarted: "自助模式已開始。", kioskModeEnded: "自助模式已結束。", setKioskPassword: "設定自助密碼", enterKioskPassword: "輸入自助密碼", kioskPassword: "密碼", confirmKioskPassword: "確認密碼", kioskPasswordHint: "請使用至少 6 個字元。此密碼只在 FREE PREP 關閉或重新啟動前有效。", endKioskModePrompt: "請輸入啟動自助模式時使用的密碼。", kioskPasswordMismatch: "密碼不一致。", kioskPasswordError: "無法更新自助模式。", cancel: "取消"
+});
+Object.assign(TRANSLATIONS.es, {
+  kioskMode: "Modo quiosco", kioskModeDescription: "Mantiene FREE PREP a pantalla completa y en primer plano hasta que introduzcas aquí la contraseña de la sesión. Reiniciar FREE PREP termina el modo quiosco.", startKioskMode: "Iniciar modo quiosco", endKioskMode: "Finalizar modo quiosco", kioskModeActive: "El modo quiosco está activo.", kioskModeStarted: "Modo quiosco iniciado.", kioskModeEnded: "Modo quiosco finalizado.", setKioskPassword: "Establecer contraseña de quiosco", enterKioskPassword: "Introducir contraseña de quiosco", kioskPassword: "Contraseña", confirmKioskPassword: "Confirmar contraseña", kioskPasswordHint: "Usa al menos 6 caracteres. Esta contraseña solo existe hasta que FREE PREP se cierre o reinicie.", endKioskModePrompt: "Introduce la contraseña usada para iniciar el modo quiosco.", kioskPasswordMismatch: "Las contraseñas no coinciden.", kioskPasswordError: "No se pudo actualizar el modo quiosco.", cancel: "Cancelar"
+});
+Object.assign(TRANSLATIONS.hi, {
+  kioskMode: "कियोस्क मोड", kioskModeDescription: "FREE PREP को फ़ुलस्क्रीन और सबसे ऊपर रखता है, जब तक आप यहां सत्र का पासवर्ड नहीं डालते। FREE PREP को फिर से शुरू करने पर यह मोड समाप्त हो जाता है।", startKioskMode: "कियोस्क मोड शुरू करें", endKioskMode: "कियोस्क मोड समाप्त करें", kioskModeActive: "कियोस्क मोड सक्रिय है।", kioskModeStarted: "कियोस्क मोड शुरू हुआ।", kioskModeEnded: "कियोस्क मोड समाप्त हुआ।", setKioskPassword: "कियोस्क पासवर्ड सेट करें", enterKioskPassword: "कियोस्क पासवर्ड डालें", kioskPassword: "पासवर्ड", confirmKioskPassword: "पासवर्ड की पुष्टि करें", kioskPasswordHint: "कम से कम 6 अक्षर उपयोग करें। यह पासवर्ड केवल FREE PREP बंद या फिर से शुरू होने तक रहता है।", endKioskModePrompt: "कियोस्क मोड शुरू करते समय उपयोग किया गया पासवर्ड डालें।", kioskPasswordMismatch: "पासवर्ड मेल नहीं खाते।", kioskPasswordError: "कियोस्क मोड अपडेट नहीं हो सका।", cancel: "रद्द करें"
+});
 
 interface TranslationContextValue {
   language: SystemLanguage;
