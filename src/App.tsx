@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HomeScreen } from "./components/HomeScreen";
+import { HomeTipCarousel } from "./components/HomeTipCarousel";
 import { DashboardPage } from "./components/DashboardPage";
 import { ImportScreen } from "./components/ImportScreen";
 import { MarketplacePage } from "./components/MarketplacePage";
@@ -191,22 +192,25 @@ export default function App() {
                 <p className="mt-1 text-sm text-muted">{t("scoreDisclaimer")}</p>
               </div>
               {route === "home" ? (
-                <div className="flex items-center gap-3">
-                  <button
-                    className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={startTutorial}
-                    type="button"
-                  >
-                    {t("tutorial")}
-                  </button>
-                  <button
-                    className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={() => navigate("teacherBuilder")}
-                    type="button"
-                  >
-                    {t("questionMakerConsole")}
-                  </button>
-                </div>
+                <>
+                  <HomeTipCarousel />
+                  <div className="flex items-center gap-3">
+                    <button
+                      className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={startTutorial}
+                      type="button"
+                    >
+                      {t("tutorial")}
+                    </button>
+                    <button
+                      className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => navigate("teacherBuilder")}
+                      type="button"
+                    >
+                      {t("questionMakerConsole")}
+                    </button>
+                  </div>
+                </>
               ) : null}
             </div>
           </header>
