@@ -28,6 +28,7 @@ import { QuestionPanel } from "./test/QuestionPanel";
 import { ReferenceSheetModal } from "./test/ReferenceSheetModal";
 import { TestNavigation } from "./test/TestNavigation";
 import { TimerBar } from "./test/TimerBar";
+import { useChoiceKeyboardShortcut } from "./test/useChoiceKeyboardShortcut";
 
 export function TestRunnerPage() {
   const {
@@ -118,6 +119,23 @@ export function TestRunnerPage() {
       if (event.key.toLowerCase() === "q") setMenuOpen(true);
       if (event.key.toLowerCase() === "p") void handlePause();
       if (event.key.toLowerCase() === "t") setTimerHidden(!timerHidden);
+      if (
+        !paused &&
+        !menuOpen &&
+        !shortcutsOpen &&
+        !notesOpen &&
+        !referenceOpen &&
+        !calculatorOpen &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "e" &&
+        currentQuestion?.questionType === "multiple_choice" &&
+        currentResponse?.selectedAnswer
+      ) {
+        event.preventDefault();
+        void toggleEliminatedChoice(currentQuestion, currentResponse.selectedAnswer);
+      }
       if (event.ctrlKey && event.key === "Enter") void handleReviewModule();
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -185,6 +203,12 @@ export function TestRunnerPage() {
       setTutorialStep("mark_review");
     }
   }
+
+  useChoiceKeyboardShortcut({
+    enabled: !paused && !menuOpen && !shortcutsOpen && !notesOpen && !referenceOpen && !calculatorOpen,
+    questionType: currentQuestion?.questionType,
+    onSelectAnswer: handleSelectAnswer
+  });
 
   function handleOpenShortcuts() {
     setShortcutsOpen(true);

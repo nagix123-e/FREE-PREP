@@ -25,6 +25,7 @@ import { QuestionPanel } from "../test/QuestionPanel";
 import { ReferenceSheetModal } from "../test/ReferenceSheetModal";
 import { TestNavigation } from "../test/TestNavigation";
 import { TimerBar } from "../test/TimerBar";
+import { useChoiceKeyboardShortcut } from "../test/useChoiceKeyboardShortcut";
 
 export function PracticeRunnerPage() {
   const { navigate, setDbError } = useAppStore();
@@ -89,6 +90,23 @@ export function PracticeRunnerPage() {
       if (event.key.toLowerCase() === "q") setMenuOpen(true);
       if (event.key.toLowerCase() === "p") void handlePause();
       if (event.key.toLowerCase() === "t" && timerEnabled) setTimerHidden(!timerHidden);
+      if (
+        !paused &&
+        !menuOpen &&
+        !shortcutsOpen &&
+        !notesOpen &&
+        !referenceOpen &&
+        !calculatorOpen &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "e" &&
+        question?.questionType === "multiple_choice" &&
+        response?.selectedAnswer
+      ) {
+        event.preventDefault();
+        void toggleEliminatedChoice(question, response.selectedAnswer);
+      }
       if (event.ctrlKey && event.key === "Enter") void handleFinishPractice();
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -150,6 +168,12 @@ export function PracticeRunnerPage() {
     await answer(question, value);
     setCheckedQuestionId(null);
   }
+
+  useChoiceKeyboardShortcut({
+    enabled: !paused && !menuOpen && !shortcutsOpen && !notesOpen && !referenceOpen && !calculatorOpen,
+    questionType: question?.questionType,
+    onSelectAnswer: handleAnswer
+  });
 
   function handleCheck() {
     if (question?.id && response?.selectedAnswer) setCheckedQuestionId(question.id);

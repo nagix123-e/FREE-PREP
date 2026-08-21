@@ -2,6 +2,7 @@ export function KeyboardShortcutHelp({ onClose }: { onClose: () => void }) {
   const shortcuts = [
     ["Right Arrow", "Next"],
     ["Left Arrow", "Back"],
+    ["A / B / C / D", "Select answer"],
     ["M", "Mark"],
     ["Q", "Open Question Menu"],
     ["E", "Eliminate selected choice"],
