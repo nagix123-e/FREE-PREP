@@ -104,9 +104,9 @@ export function SettingsScreen() {
       </section>
       <section className="mt-8 rounded-md border border-line bg-slate-50 p-4">
         <h3 className="font-semibold">{t("keyboardShortcuts")}</h3>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          {[t("nextShortcut"), t("backShortcut"), t("markShortcut"), t("questionMenuShortcut"), t("pauseShortcut"), t("submitShortcut"), t("toggleTimerShortcut")].map((item) => (
-            <div className="rounded-md border border-line bg-white p-2" key={item}>{item}</div>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+          {[t("nextShortcut"), t("backShortcut"), t("selectAnswerShortcut"), t("markShortcut"), t("questionMenuShortcut"), t("pauseShortcut"), t("submitShortcut"), t("toggleTimerShortcut")].map((item) => (
+            <div className="overflow-x-auto rounded-md border border-line bg-white p-2" key={item}>{item}</div>
           ))}
         </div>
       </section>

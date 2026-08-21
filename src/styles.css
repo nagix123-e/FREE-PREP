@@ -594,7 +594,15 @@ textarea:focus-visible {
 }
 
 .shortcut-help-modal {
-  width: 520px;
+  width: min(520px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.shortcut-help-modal__list {
+  max-height: calc(100vh - 10rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .min-w-visual {

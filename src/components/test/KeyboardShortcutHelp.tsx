@@ -18,11 +18,11 @@ export function KeyboardShortcutHelp({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-semibold">Keyboard Shortcuts</h2>
           <button className="text-sm font-semibold text-slate-600" onClick={onClose} type="button">Close</button>
         </div>
-        <div className="mt-5 space-y-2">
+        <div className="shortcut-help-modal__list mt-5 space-y-2">
           {shortcuts.map(([keys, action]) => (
-            <div className="flex items-center justify-between rounded-md border border-line bg-slate-50 p-3 text-sm" key={keys}>
-              <span>{action}</span>
-              <kbd className="rounded border border-line bg-white px-2 py-1 font-semibold">{keys}</kbd>
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-slate-50 p-3 text-sm" key={keys}>
+              <span className="min-w-0 overflow-x-auto">{action}</span>
+              <kbd className="shrink-0 rounded border border-line bg-white px-2 py-1 font-semibold">{keys}</kbd>
             </div>
           ))}
         </div>
